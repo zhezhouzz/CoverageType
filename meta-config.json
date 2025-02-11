@@ -1,0 +1,29 @@
+{
+    "mode": [
+        "Debug"
+    ],
+    "max_printing_size": 300,
+    "log_tags": [
+        // "syn",
+        // "eval",
+        // "ntypecheck",
+        // "plan",
+        // "parsing",
+        // "queries",
+        // "model",
+        // "z3encode",
+        // "preprocess",
+        "result",
+        // "desym_mapping",
+        // "desymbolic",
+        "never-use"
+    ],
+    "prover_timeout_bound": 999,
+    "prim_path": {
+        "predefined_path": "synRuntime/automata/builtin.s",
+        "axioms_path": "",
+        "templates_path": "",
+        "p_header_template_path": "synRuntime/plang/header_template.funcp",
+        "p_client_template_path": "synRuntime/plang/client_template.funcp"
+    }
+}

@@ -1,0 +1,4 @@
+(executable
+ (public_name CoverageType)
+ (name main)
+ (libraries CoverageType))
