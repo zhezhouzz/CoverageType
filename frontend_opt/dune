@@ -1,0 +1,16 @@
+(library
+ (public_name CoverageType.frontend_opt)
+ (name frontend_opt)
+ (wrapped true)
+ (libraries ast core zutils)
+ (modules
+  to_raw_term
+  to_cty
+  to_rty
+  to_type_dec
+  to_judgement
+  to_item
+  frontend_opt
+ )
+ (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv ppx_inline_test ppx_assert ppx_deriving.show ppx_deriving.eq ppx_deriving.ord ppx_here))
+)
