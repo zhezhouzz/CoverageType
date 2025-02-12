@@ -14,7 +14,7 @@ type 't value =
       fixarg : (('t, string) typed[@bound]);
       body : ('t, 't term) typed;
     }
-  | VTu of ('t, 't value) typed list
+  | VTuple of ('t, 't value) typed list
 
 and 't term =
   | CErr
@@ -24,7 +24,7 @@ and 't term =
       lhs : (('t, string) typed[@bound]);
       body : ('t, 't term) typed;
     }
-  | CLetDeTu of {
+  | CLetDeTuple of {
       turhs : ('t, 't value) typed;
       tulhs : (('t, string) typed list[@bound]);
       body : ('t, 't term) typed;
@@ -60,11 +60,11 @@ type 't raw_term =
     }
   | App of ('t, 't raw_term) typed * ('t, 't raw_term) typed list
   | AppOp of ('t, op) typed * ('t, 't raw_term) typed list
-  | Ite of
+  | Ifte of
       ('t, 't raw_term) typed
       * ('t, 't raw_term) typed
       * ('t, 't raw_term) typed
-  | Tu of ('t, 't raw_term) typed list
+  | Tuple of ('t, 't raw_term) typed list
   | Match of {
       matched : ('t, 't raw_term) typed;
       match_cases : 't raw_match_case list;

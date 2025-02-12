@@ -14,8 +14,8 @@ let rec subst_value (string_x : string) f (value_e : 't value) =
       if String.equal fixname.x string_x then VFix { fixname; fixarg; body }
       else if String.equal fixarg.x string_x then VFix { fixname; fixarg; body }
       else VFix { fixname; fixarg; body = typed_subst_term string_x f body }
-  | VTu _t__tvaluetypedlist0 ->
-      VTu (List.map (typed_subst_value string_x f) _t__tvaluetypedlist0)
+  | VTuple _t__tvaluetypedlist0 ->
+      VTuple (List.map (typed_subst_value string_x f) _t__tvaluetypedlist0)
 
 and typed_subst_value (string_x : string) f (value_e : ('t, 't value) typed) =
   value_e #-> (subst_value string_x f)
@@ -35,11 +35,11 @@ and subst_term (string_x : string) f (term_e : 't term) =
             lhs;
             body = typed_subst_term string_x f body;
           }
-  | CLetDeTu { turhs; tulhs; body } ->
+  | CLetDeTuple { turhs; tulhs; body } ->
       if List.exists (fun x -> String.equal string_x x.x) tulhs then
-        CLetDeTu { turhs = typed_subst_value string_x f turhs; tulhs; body }
+        CLetDeTuple { turhs = typed_subst_value string_x f turhs; tulhs; body }
       else
-        CLetDeTu
+        CLetDeTuple
           {
             turhs = typed_subst_value string_x f turhs;
             tulhs;
@@ -105,13 +105,13 @@ let rec subst_raw_term (string_x : string) f (raw_term_e : 't raw_term) =
       AppOp
         ( _t_optyped0,
           List.map (typed_subst_raw_term string_x f) _t__traw_termtypedlist1 )
-  | Ite (_t__traw_termtyped0, _t__traw_termtyped1, _t__traw_termtyped2) ->
-      Ite
+  | Ifte (_t__traw_termtyped0, _t__traw_termtyped1, _t__traw_termtyped2) ->
+      Ifte
         ( typed_subst_raw_term string_x f _t__traw_termtyped0,
           typed_subst_raw_term string_x f _t__traw_termtyped1,
           typed_subst_raw_term string_x f _t__traw_termtyped2 )
-  | Tu _t__traw_termtypedlist0 ->
-      Tu (List.map (typed_subst_raw_term string_x f) _t__traw_termtypedlist0)
+  | Tuple _t__traw_termtypedlist0 ->
+      Tuple (List.map (typed_subst_raw_term string_x f) _t__traw_termtypedlist0)
   | Match { matched; match_cases } ->
       Match
         {

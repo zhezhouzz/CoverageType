@@ -15,7 +15,7 @@ let rec fv_value (value_e : 't value) =
            ([] @ typed_fv_term body)
            [ fixarg ])
         [ fixname ]
-  | VTu _t__tvaluetypedlist0 ->
+  | VTuple _t__tvaluetypedlist0 ->
       [] @ List.concat (List.map typed_fv_value _t__tvaluetypedlist0)
 
 and typed_fv_value (value_e : ('t, 't value) typed) = fv_value value_e.x
@@ -29,7 +29,7 @@ and fv_term (term_e : 't term) =
         ([] @ typed_fv_term body)
         [ lhs ]
       @ typed_fv_term rhs
-  | CLetDeTu { turhs; tulhs; body } ->
+  | CLetDeTuple { turhs; tulhs; body } ->
       Zdatatype.List.substract (typed_eq String.equal)
         ([] @ typed_fv_term body)
         tulhs
@@ -72,11 +72,11 @@ let rec fv_raw_term (raw_term_e : 't raw_term) =
       @ typed_fv_raw_term _t__traw_termtyped0
   | AppOp (_, _t__traw_termtypedlist1) ->
       [] @ List.concat (List.map typed_fv_raw_term _t__traw_termtypedlist1)
-  | Ite (_t__traw_termtyped0, _t__traw_termtyped1, _t__traw_termtyped2) ->
+  | Ifte (_t__traw_termtyped0, _t__traw_termtyped1, _t__traw_termtyped2) ->
       (([] @ typed_fv_raw_term _t__traw_termtyped2)
       @ typed_fv_raw_term _t__traw_termtyped1)
       @ typed_fv_raw_term _t__traw_termtyped0
-  | Tu _t__traw_termtypedlist0 ->
+  | Tuple _t__traw_termtypedlist0 ->
       [] @ List.concat (List.map typed_fv_raw_term _t__traw_termtypedlist0)
   | Match { matched; match_cases } ->
       ([] @ List.concat (List.map fv_raw_match_case match_cases))

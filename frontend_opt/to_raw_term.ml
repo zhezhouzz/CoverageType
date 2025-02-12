@@ -27,7 +27,7 @@ let rec typed_raw_term_to_expr expr = typed_to_expr raw_term_to_expr expr
 and raw_term_to_expr (expr : Nt.t raw_term) =
   match expr with
   | Err -> mk_construct ("Err", [])
-  | Tu es ->
+  | Tuple es ->
       desc_to_ocamlexpr @@ Pexp_tuple (List.map typed_raw_term_to_expr es)
   | Var var -> typed_to_expr mkvar var
   | Const v -> constant_to_expr v
@@ -46,7 +46,7 @@ and raw_term_to_expr (expr : Nt.t raw_term) =
         List.map (fun x -> (Asttypes.Nolabel, typed_raw_term_to_expr x)) args
       in
       desc_to_ocamlexpr @@ Pexp_apply (func, args)
-  | Ite (e1, e2, e3) ->
+  | Ifte (e1, e2, e3) ->
       let e1, e2, e3 = map3 typed_raw_term_to_expr (e1, e2, e3) in
       desc_to_ocamlexpr @@ Pexp_ifthenelse (e1, e2, Some e3)
   | Match { matched; match_cases } ->
@@ -92,12 +92,12 @@ let to_typed_ids x =
   let rec aux l x =
     match x.x with
     | Var y -> l @ [ { ty = x.ty; x = y.x } ]
-    | Tu xs -> List.fold_left aux l xs
+    | Tuple xs -> List.fold_left aux l xs
     | _ -> failwith "not a pattern"
   in
   aux [] x
 
-let de_tuple_term e = match e.x with Tu xs -> xs | _ -> [ e ]
+let de_tuple_term e = match e.x with Tuple xs -> xs | _ -> [ e ]
 
 let term_force_var e =
   match e.x with
@@ -107,7 +107,7 @@ let term_force_var e =
 let rec typed_raw_term_of_pattern pattern =
   match pattern.ppat_desc with
   | Ppat_tuple ps ->
-      (Tu (List.map typed_raw_term_of_pattern ps)) #: Nt.Ty_unknown
+      (Tuple (List.map typed_raw_term_of_pattern ps)) #: Nt.Ty_unknown
   | Ppat_var ident -> (Var ident.txt #: Nt.Ty_unknown) #: Nt.Ty_unknown
   | Ppat_constraint (ident, tp) ->
       let term = typed_raw_term_of_pattern ident in
@@ -135,7 +135,7 @@ let typed_ids_of_pattern pattern =
 let typed_raw_term_of_expr expr =
   let rec aux expr =
     match expr.pexp_desc with
-    | Pexp_tuple es -> (Tu (List.map aux es)) #: Nt.Ty_unknown
+    | Pexp_tuple es -> (Tuple (List.map aux es)) #: Nt.Ty_unknown
     | Pexp_constraint (expr, ty) ->
         (* let () = Printf.printf "Pexp_constraint: %s\n" (layout_ct ty) in *)
         update_ty (aux expr) (Nt.core_type_to_t ty)
@@ -146,7 +146,7 @@ let typed_raw_term_of_expr expr =
           | None -> []
           | Some args -> (
               let args = aux args in
-              match args.x with Tu es -> es | _ -> [ args ])
+              match args.x with Tuple es -> es | _ -> [ args ])
         in
         let c = constructor_to_term_or_op @@ longid_to_id c in
         match c with
@@ -180,9 +180,9 @@ let typed_raw_term_of_expr expr =
         in
         res #: Nt.Ty_unknown
     | Pexp_ifthenelse (e1, e2, Some e3) ->
-        (Ite (aux e1, aux e2, aux e3)) #: Nt.Ty_unknown
+        (Ifte (aux e1, aux e2, aux e3)) #: Nt.Ty_unknown
     | Pexp_ifthenelse (e1, e2, None) ->
-        (Ite (aux e1, aux e2, (Const U) #: Nt.Ty_unit)) #: Nt.Ty_unknown
+        (Ifte (aux e1, aux e2, (Const U) #: Nt.Ty_unit)) #: Nt.Ty_unknown
     | Pexp_match (matched, match_cases) ->
         let match_cases =
           List.map

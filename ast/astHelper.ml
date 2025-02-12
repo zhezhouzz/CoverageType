@@ -67,8 +67,28 @@ let typed_term_to_opt_typed_term e = typed_map_term (fun x -> Some x) e
 let value_to_opt_value e = map_value (fun x -> Some x) e
 let typed_value_to_opt_typed_value e = typed_map_value (fun x -> Some x) e
 
-(* Generated from _term.ml *)
 open Sugar
+
+(** Well-fromed Rty *)
+
+(** Aux functions *)
+let check_wf_rty (tau : 't rty) =
+  let rec aux tau =
+    match tau with
+    | RtyBase _ -> ()
+    | RtyArr { arr_type; argrty; arg; retty } -> (
+        match (arr_type, argrty) with
+        | GhostOverBaseArr, RtyBase { ou = Over; _ } -> ()
+        | GhostOverBaseArr, _ -> _die_with [%here] "Rty is not well-fromed"
+        | NormalArr, RtyBase { ou = Over; _ } -> ()
+        | NormalArr, _ ->
+            if List.exists (String.equal arg) @@ fv_rty_id retty then
+              _die_with [%here] "Rty is not well-fromed")
+    | RtyProd (tau1, tau2) ->
+        aux tau1;
+        aux tau2
+  in
+  aux tau
 
 let constant_to_value c = (VConst c) #: (Prop.constant_to_nt c)
 let value_to_term v = (CVal v) #: v.ty
@@ -159,8 +179,8 @@ let rec typed_value_to_typed_raw_term (value_e : ('t, 't value) typed) =
       (* let tmp = (VLam { lamarg = fixarg; body }) #: body.ty in *)
       let tmp = (VLam { lamarg = fixarg; body }) #: value_e.ty in
       typed_value_to_typed_raw_term tmp
-  | VTu _t__tvaluetypedlist0 ->
-      (Tu (List.map typed_value_to_typed_raw_term _t__tvaluetypedlist0))
+  | VTuple _t__tvaluetypedlist0 ->
+      (Tuple (List.map typed_value_to_typed_raw_term _t__tvaluetypedlist0))
       #: value_e.ty
 
 and typed_term_to_typed_raw_term (term_e : ('t, 't term) typed) =
@@ -176,7 +196,7 @@ and typed_term_to_typed_raw_term (term_e : ('t, 't term) typed) =
            if_rec = false;
          })
       #: term_e.ty
-  | CLetDeTu { turhs; tulhs; body } ->
+  | CLetDeTuple { turhs; tulhs; body } ->
       (Let
          {
            rhs = typed_value_to_typed_raw_term turhs;

@@ -59,3 +59,8 @@ let rec rty_of_expr expr =
   | _ ->
       _failatwith [%here]
         (spf "wrong refinement type: %s" (Pprintast.string_of_expression expr))
+
+let rty_of_expr expr =
+  let rty = rty_of_expr expr in
+  check_wf_rty rty;
+  rty

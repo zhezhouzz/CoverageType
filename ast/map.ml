@@ -14,8 +14,8 @@ let rec map_value (f : 't -> 's) (value_e : 't value) =
           fixarg = fixarg #=> f;
           body = typed_map_term f body;
         }
-  | VTu _t__tvaluetypedlist0 ->
-      VTu (List.map (typed_map_value f) _t__tvaluetypedlist0)
+  | VTuple _t__tvaluetypedlist0 ->
+      VTuple (List.map (typed_map_value f) _t__tvaluetypedlist0)
 
 and typed_map_value (f : 't -> 's) (value_e : ('t, 't value) typed) =
   value_e #=> f #-> (map_value f)
@@ -32,8 +32,8 @@ and map_term : 't 's. ('t -> 's) -> 't term -> 's term =
           lhs = lhs #=> f;
           body = typed_map_term f body;
         }
-  | CLetDeTu { turhs; tulhs; body } ->
-      CLetDeTu
+  | CLetDeTuple { turhs; tulhs; body } ->
+      CLetDeTuple
         {
           turhs = typed_map_value f turhs;
           tulhs = List.map (fun x -> x #=> f) tulhs;
@@ -90,13 +90,13 @@ let rec map_raw_term : 't 's. ('t -> 's) -> 't raw_term -> 's raw_term =
       AppOp
         ( _t_optyped0 #=> f,
           List.map (typed_map_raw_term f) _t__traw_termtypedlist1 )
-  | Ite (_t__traw_termtyped0, _t__traw_termtyped1, _t__traw_termtyped2) ->
-      Ite
+  | Ifte (_t__traw_termtyped0, _t__traw_termtyped1, _t__traw_termtyped2) ->
+      Ifte
         ( typed_map_raw_term f _t__traw_termtyped0,
           typed_map_raw_term f _t__traw_termtyped1,
           typed_map_raw_term f _t__traw_termtyped2 )
-  | Tu _t__traw_termtypedlist0 ->
-      Tu (List.map (typed_map_raw_term f) _t__traw_termtypedlist0)
+  | Tuple _t__traw_termtypedlist0 ->
+      Tuple (List.map (typed_map_raw_term f) _t__traw_termtypedlist0)
   | Match { matched; match_cases } ->
       Match
         {
