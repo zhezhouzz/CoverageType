@@ -72,6 +72,17 @@ open Sugar
 (** Well-fromed Rty *)
 
 (** Aux functions *)
+
+let is_free_cty x rty = List.exists (String.equal x) @@ fv_cty_id rty
+
+let is_close_cty dom rty =
+  List.for_all (fun x -> List.exists (String.equal x) dom) @@ fv_cty_id rty
+
+let is_free_rty x rty = List.exists (String.equal x) @@ fv_rty_id rty
+
+let is_close_rty dom rty =
+  List.for_all (fun x -> List.exists (String.equal x) dom) @@ fv_rty_id rty
+
 let check_wf_rty (tau : 't rty) =
   let rec aux tau =
     match tau with
@@ -82,13 +93,36 @@ let check_wf_rty (tau : 't rty) =
         | GhostOverBaseArr, _ -> _die_with [%here] "Rty is not well-fromed"
         | NormalArr, RtyBase { ou = Over; _ } -> ()
         | NormalArr, _ ->
-            if List.exists (String.equal arg) @@ fv_rty_id retty then
+            if is_free_rty arg retty then
               _die_with [%here] "Rty is not well-fromed")
     | RtyProd (tau1, tau2) ->
         aux tau1;
         aux tau2
   in
   aux tau
+
+let build_wf_ctx (ctx : ('t rty, string) typed list) =
+  let rec aux (over_ctx, under_ctx) ctx =
+    match ctx with
+    | [] -> (over_ctx, under_ctx)
+    | { x; ty = RtyBase { ou = Over; cty } as rty } :: ctx ->
+        let dom = List.map fst over_ctx in
+        if is_close_rty dom rty then
+          aux (over_ctx @ [ (x, cty) ], under_ctx) ctx
+        else _die [%here]
+    | { x; ty = RtyBase { ou = Under; cty } as rty } :: ctx ->
+        let dom = List.map fst over_ctx @ List.map fst under_ctx in
+        if is_close_rty dom rty then
+          aux (over_ctx, under_ctx @ [ (x, cty) ]) ctx
+        else _die [%here]
+    | { x; ty = RtyProd _ } :: _ ->
+        _die_with [%here] (spf "unimp prod type of %s" x)
+    | { x; ty = RtyArr _ as rty } :: ctx ->
+        let dom = List.map fst over_ctx in
+        if is_close_rty dom rty then aux (over_ctx, under_ctx) ctx
+        else _die [%here]
+  in
+  aux ([], []) ctx
 
 let constant_to_value c = (VConst c) #: (Prop.constant_to_nt c)
 let value_to_term v = (CVal v) #: v.ty
@@ -165,6 +199,13 @@ let rec mk_rty_tuple = function
   | [] -> _die [%here]
   | [ x ] -> x
   | hd :: tl -> RtyProd (hd, mk_rty_tuple tl)
+
+let mk_top_cty nty = { nty; phi = Prop.mk_true }
+let mk_bot_cty nty = { nty; phi = Prop.mk_false }
+let mk_top_overrty nty = RtyBase { ou = Over; cty = mk_top_cty nty }
+let mk_bot_overrty nty = RtyBase { ou = Over; cty = mk_bot_cty nty }
+let mk_top_underrty nty = RtyBase { ou = Under; cty = mk_top_cty nty }
+let mk_bot_underrty nty = RtyBase { ou = Under; cty = mk_bot_cty nty }
 
 (** Denormalize *)
 

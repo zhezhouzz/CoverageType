@@ -12,12 +12,12 @@ let pprint_basic_typing ctx (e, ty) () =
 let pprint_typing_infer ctx (e, ty) () =
   Typectx.pprint_ctx layout_rty ctx;
   Pp.printf "⊢ @{<hi_magenta>%s@} ⇨\n" (short_str 100 e);
-  Pp.printf "  @{<cyan>%s@}\n\n" @@ layout_rty ty
+  Pp.printf "  @{<cyan>%s@}\n\n" ty
 
 let pprint_typing_check ctx (e, ty) () =
   Typectx.pprint_ctx layout_rty ctx;
   Pp.printf "⊢ @{<hi_magenta>%s@} ⇦\n" (short_str 100 e);
-  Pp.printf "  @{<cyan>%s@}\n\n" @@ layout_rty ty
+  Pp.printf "  @{<cyan>%s@}\n\n" ty
 
 let pprint_typing_app fname ctx (args, r) () =
   Pp.printf "@{<bold>Application Type Check (%s):@}\n" fname;
