@@ -120,3 +120,7 @@ type 't item =
     }
   | MRty of { is_assumption : bool; name : string; rty : 't rty }
 [@@deriving eq, ord, show, sexp]
+
+open Typectx
+
+type built_in_ctx = { builtin_ctx : Nt.nt rty ctx; axioms : Nt.nt prop ctx }

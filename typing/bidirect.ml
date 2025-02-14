@@ -3,6 +3,7 @@ open Zutils
 open Sugar
 open Auxtyping
 open Common
+open Rctx
 
 let instantiate_arrow_rty _ _ _ = failwith "unimp"
 
@@ -43,10 +44,10 @@ let type_check_group (bctx : built_in_ctx) =
     let () = pprint_typing_check_value rctx (v, rty) in
     match (v.x, rty) with
     | _, RtyArr { arr_type = GhostOverBaseArr; argrty; arg; retty } ->
-        value_type_check (rctx_add_gvar rctx arg #: argrty) v retty
+        value_type_check (Rctx.add_gvar rctx arg #: argrty) v retty
     | VConst _, _ | VVar _, _ ->
         let e = value_type_infer rctx v in
-        if sub_rty bctx (rctx_to_ctx rctx) (e.ty, rty) then Some e
+        if sub_rty bctx (Rctx.to_ctx rctx) (e.ty, rty) then Some e
         else (
           _warinning_subtyping_error [%here] (e.ty, rty);
           _warinning_typing_error [%here] (layout_typed_value v, rty);
@@ -55,7 +56,7 @@ let type_check_group (bctx : built_in_ctx) =
       ->
         (* Note: unify the name of parameter type and lambda variable *)
         let retty = subst_rty_instance arg (AVar lamarg) retty in
-        let rctx', lamarg = rctx_add_var rctx lamarg.x #: argrty in
+        let rctx', lamarg = Rctx.add_var rctx lamarg.x #: argrty in
         let* body = term_type_check rctx' body retty in
         Some
           (VLam { lamarg; body })
@@ -163,7 +164,7 @@ let type_check_group (bctx : built_in_ctx) =
             let tmp_rty =
               mk_unit_underrty (subst_prop_instance default_v arglit cty.phi)
             in
-            if not (non_emptiness_rty bctx (rctx_to_ctx rctx) tmp_rty) then (
+            if not (non_emptiness_rty bctx (Rctx.to_ctx rctx) tmp_rty) then (
               _warinning_nonemptiness_error [%here] argrty;
               _warinning_typing_error [%here] (layout_lit arglit, argrty);
               None)
@@ -175,7 +176,7 @@ let type_check_group (bctx : built_in_ctx) =
               value_to_lit [%here] @@ _get_x @@ (apparg #=> erase_rty)
             in
             let retty = subst_rty_instance arg arglit retty in
-            if not (sub_rty bctx (rctx_to_ctx rctx) (apparg.ty, argrty)) then (
+            if not (sub_rty bctx (Rctx.to_ctx rctx) (apparg.ty, argrty)) then (
               _warinning_subtyping_error [%here] (apparg.ty, argrty);
               _warinning_typing_error [%here] (layout_lit arglit, argrty);
               None)
@@ -189,7 +190,7 @@ let type_check_group (bctx : built_in_ctx) =
               let retty = exists_rty (Rename.unique "_tmp") #: tmp_rty retty in
               Some retty
         | RtyArr _ ->
-            if not (sub_rty bctx (rctx_to_ctx rctx) (apparg.ty, argrty)) then (
+            if not (sub_rty bctx (Rctx.to_ctx rctx) (apparg.ty, argrty)) then (
               _warinning_subtyping_error [%here] (apparg.ty, argrty);
               _warinning_typing_error [%here]
                 (layout_typed_value @@ (apparg #=> erase_rty), argrty);
@@ -242,11 +243,11 @@ let type_check_group (bctx : built_in_ctx) =
       | CLetDeTuple _ -> failwith "unimp"
       | CLetE { rhs; lhs; body } ->
           let* rhs = term_type_infer rctx rhs in
-          let rctx', lhs = rctx_add_var rctx lhs.x #: rhs.ty in
+          let rctx', lhs = Rctx.add_var rctx lhs.x #: rhs.ty in
           let* body = term_type_infer rctx' body in
           Some
             (CLetE { rhs; lhs; body })
-            #: (rctx_diff_exists_rty [%here] rctx' rctx body.ty)
+            #: (Rctx.diff_exists_rty [%here] rctx' rctx body.ty)
     in
     pprint_typing_infer_term_after rctx
       ( e,
@@ -264,14 +265,14 @@ let type_check_group (bctx : built_in_ctx) =
         Some (CVal v) #: v.ty
     | CApp _ | CAppOp _ | CMatch _ ->
         let* e' = term_type_infer rctx e in
-        if sub_rty bctx (rctx_to_ctx rctx) (e'.ty, rty) then Some e'.x #: rty
+        if sub_rty bctx (Rctx.to_ctx rctx) (e'.ty, rty) then Some e'.x #: rty
         else (
           _warinning_subtyping_error [%here] (e'.ty, rty);
           _warinning_typing_error [%here] (layout_typed_term e, rty);
           None)
     | CLetE { rhs; lhs; body } ->
         let* rhs = term_type_infer rctx rhs in
-        let rctx', lhs = rctx_add_var rctx lhs.x #: rhs.ty in
+        let rctx', lhs = Rctx.add_var rctx lhs.x #: rhs.ty in
         let* body = term_type_check rctx' body rty in
         Some (CLetE { rhs; lhs; body }) #: rty
   and match_case_type_infer _ _ _ =
@@ -318,3 +319,9 @@ let type_check_group (bctx : built_in_ctx) =
     (*            { constructor = constructor.x #: constructor_rty; args; exp }) *)
   in
   (value_type_check, term_type_check)
+
+let value_type_check bctx (value, rty) =
+  (fst @@ type_check_group bctx) Rctx.emp value rty
+
+let term_type_check bctx (value, rty) =
+  (snd @@ type_check_group bctx) Rctx.emp value rty

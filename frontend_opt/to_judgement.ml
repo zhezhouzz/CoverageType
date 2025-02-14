@@ -26,12 +26,12 @@ let pprint_typing_app fname ctx (args, r) () =
     (List.split_by " → " (fun (x, ty) -> spf "%s:%s" x (layout_rty ty)) args);
   Pp.printf "  @{<cyan>%s@}\n\n" @@ layout_rty r
 
-let playout_subtyping ctx (r1, r2) () =
+let pprint_subtyping ctx (r1, r2) () =
   ctx ();
   Printf.printf "⊢ @{<hi_magenta>%s@} <:\n" (layout_rty r1);
   Printf.printf "  @{<cyan>%s@}\n\n" (layout_rty r2)
 
-let playout_nonempty ctx r () =
+let pprint_nonempty ctx r () =
   Pp.printf "@{<bold>None-mptyness Check:@}\n";
   ctx ();
   Printf.printf "⊢@{<hi_magenta>%s@} is not empty\n\n" (layout_rty r)

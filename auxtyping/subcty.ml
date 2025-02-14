@@ -42,8 +42,6 @@ let check_sat axioms query =
   let _ = Prover.update_axioms axioms in
   Prover.check_sat_bool query
 
-open Rctx
-
 let sub_cty builtin_ctx ctx cty1 cty2 =
   let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list ctx) in
   let () =
@@ -83,7 +81,7 @@ let sub_cty builtin_ctx ctx cty1 cty2 =
     _log_queries @@ fun _ ->
     Printf.printf "check valid: %s\n" (layout_prop_ query)
   in
-  check_valid builtin_ctx.axioms query
+  check_valid (bctx_to_axioms builtin_ctx) query
 
 let non_emptiness_cty builtin_ctx ctx cty =
   let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list ctx) in
@@ -119,4 +117,4 @@ let non_emptiness_cty builtin_ctx ctx cty =
     _log_queries @@ fun _ ->
     Printf.printf "check sat: %s\n" (layout_prop_ query)
   in
-  check_sat builtin_ctx.axioms query
+  check_sat (bctx_to_axioms builtin_ctx) query

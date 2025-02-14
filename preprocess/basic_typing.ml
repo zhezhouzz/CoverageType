@@ -298,8 +298,23 @@ let item_check ctx (e : t item) : t ctx * t item =
       (ctx', MFuncImpRaw { name; if_rec = true; body })
   | MFuncImp _ -> _failatwith [%here] "die"
 
-let struct_mk_ctx ctx l =
+let struct_mk_basic_ctx ctx l =
   add_to_rights ctx @@ List.concat @@ List.map item_mk_ctx l
+
+let struct_mk_rty_ctx l =
+  let aux res = function
+    | MRty { is_assumption = true; name; rty } ->
+        Typectx.add_to_right res name #: rty
+    | _ -> res
+  in
+  List.fold_left aux Typectx.emp l
+
+let struct_mk_axiom_ctx l =
+  let aux res = function
+    | MAxiom { name; prop } -> Typectx.add_to_right res name #: prop
+    | _ -> res
+  in
+  List.fold_left aux Typectx.emp l
 
 let struct_check ctx l =
   List.fold_left

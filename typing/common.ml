@@ -6,27 +6,32 @@ open Auxtyping
 
 let _log = Myconfig._log_typing
 
-type rctx = { gctx : Nt.t rty ctx; ctx : Nt.t rty ctx }
+module Rctx = struct
+  type rctx = { gctx : Nt.t rty ctx; ctx : Nt.t rty ctx }
 
-let rctx_to_ctx { gctx; ctx } = concat gctx ctx
-let rctx_add_gvar rctx x = { rctx with gctx = add_to_right rctx.gctx x }
+  let emp = { gctx = emp; ctx = emp }
+  let to_ctx { gctx; ctx } = concat gctx ctx
+  let add_gvar rctx x = { rctx with gctx = add_to_right rctx.gctx x }
 
-let rctx_add_var { gctx; ctx } x =
-  let gvars, rty = destruct_grty x.ty in
-  let gctx = add_to_rights gctx gvars in
-  let ctx = add_to_right ctx x.x #: rty in
-  let x = x.x #: rty in
-  ({ gctx; ctx }, x)
+  let add_var { gctx; ctx } x =
+    let gvars, rty = destruct_grty x.ty in
+    let gctx = add_to_rights gctx gvars in
+    let ctx = add_to_right ctx x.x #: rty in
+    let x = x.x #: rty in
+    ({ gctx; ctx }, x)
 
-let rctx_diff_exists_rty_opt ctx1 ctx2 rty =
-  let* gvars = subtract_opt (equal_rty Nt.equal_nt) ctx1.gctx ctx2.gctx in
-  let* vars = subtract_opt (equal_rty Nt.equal_nt) ctx1.ctx ctx2.ctx in
-  Some (construct_grty gvars @@ exists_rtys vars rty)
+  let diff_exists_rty_opt ctx1 ctx2 rty =
+    let* gvars = subtract_opt (equal_rty Nt.equal_nt) ctx1.gctx ctx2.gctx in
+    let* vars = subtract_opt (equal_rty Nt.equal_nt) ctx1.ctx ctx2.ctx in
+    Some (construct_grty gvars @@ exists_rtys vars rty)
 
-let rctx_diff_exists_rty loc ctx1 ctx2 rty =
-  match rctx_diff_exists_rty_opt ctx1 ctx2 rty with
-  | None -> _die loc
-  | Some rty -> rty
+  let diff_exists_rty loc ctx1 ctx2 rty =
+    match diff_exists_rty_opt ctx1 ctx2 rty with
+    | None -> _die loc
+    | Some rty -> rty
+end
+
+open Rctx
 
 let _warinning_subtyping_error loc (rty1, rty2) =
   _log @@ fun _ ->

@@ -329,3 +329,21 @@ let denormalize_item (item : Nt.t item) =
   | _ -> item
 
 let denormalize_structure = List.map denormalize_item
+
+(* Typectx *)
+
+open Typectx
+
+let rty_add_to_right { builtin_ctx; axioms } x =
+  { builtin_ctx = add_to_right builtin_ctx x; axioms }
+
+let axiom_add_to_right { builtin_ctx; axioms } x =
+  { builtin_ctx; axioms = add_to_right axioms x }
+
+let rty_add_to_rights { builtin_ctx; axioms } x =
+  { builtin_ctx = add_to_rights builtin_ctx x; axioms }
+
+let axiom_add_to_rights { builtin_ctx; axioms } x =
+  { builtin_ctx; axioms = add_to_rights axioms x }
+
+let bctx_to_axioms bctx = List.map _get_ty @@ ctx_to_list bctx.axioms

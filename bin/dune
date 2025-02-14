@@ -1,4 +1,14 @@
+(env
+ (dev
+  (flags
+   (:standard -w -32 -w -35 -w -27 -w -33 -w -26))))
+
 (executable
- (public_name CoverageType)
  (name main)
- (libraries CoverageType))
+ (modules main)
+ (libraries core core_unix.command_unix
+            language
+            preprocess
+            typing)
+ (preprocess
+  (pps ppx_jane)))
