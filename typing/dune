@@ -4,6 +4,7 @@
  (wrapped true)
  (libraries core zutils language auxtyping)
  (modules
+   common
    bidirect
    typing
  )

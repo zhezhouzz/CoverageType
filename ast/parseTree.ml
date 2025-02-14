@@ -97,7 +97,7 @@ type 't rty =
       retty : 't rty;
     }
   | RtyProd of 't rty * 't rty
-[@@deriving sexp]
+[@@deriving eq, ord, show, sexp]
 
 type 't item =
   | MTyDecl of {
@@ -119,4 +119,4 @@ type 't item =
       body : ('t, 't term) typed;
     }
   | MRty of { is_assumption : bool; name : string; rty : 't rty }
-[@@deriving sexp]
+[@@deriving eq, ord, show, sexp]

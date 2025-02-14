@@ -5,33 +5,33 @@ open To_raw_term
 open Zdatatype
 
 let pprint_basic_typing ctx (e, ty) () =
-  Typectx.pprint_ctx Nt.layout ctx;
+  ctx ();
   Printf.printf "⊢\n";
-  Printf.printf "%s :\n%s\n" (layout_term e) (Nt.layout ty)
+  Printf.printf "%s :\n%s\n" (layout_raw_term e) (Nt.layout ty)
 
 let pprint_typing_infer ctx (e, ty) () =
-  Typectx.pprint_ctx layout_rty ctx;
+  ctx ();
   Pp.printf "⊢ @{<hi_magenta>%s@} ⇨\n" (short_str 100 e);
   Pp.printf "  @{<cyan>%s@}\n\n" ty
 
 let pprint_typing_check ctx (e, ty) () =
-  Typectx.pprint_ctx layout_rty ctx;
+  ctx ();
   Pp.printf "⊢ @{<hi_magenta>%s@} ⇦\n" (short_str 100 e);
   Pp.printf "  @{<cyan>%s@}\n\n" ty
 
 let pprint_typing_app fname ctx (args, r) () =
   Pp.printf "@{<bold>Application Type Check (%s):@}\n" fname;
-  Typectx.pprint_ctx layout_rty ctx;
+  ctx ();
   Pp.printf "⊢ @{<hi_magenta>%s → ? @} ⇦\n"
     (List.split_by " → " (fun (x, ty) -> spf "%s:%s" x (layout_rty ty)) args);
   Pp.printf "  @{<cyan>%s@}\n\n" @@ layout_rty r
 
 let playout_subtyping ctx (r1, r2) () =
-  Typectx.pprint_ctx layout_rty ctx;
+  ctx ();
   Printf.printf "⊢ @{<hi_magenta>%s@} <:\n" (layout_rty r1);
   Printf.printf "  @{<cyan>%s@}\n\n" (layout_rty r2)
 
 let playout_nonempty ctx r () =
   Pp.printf "@{<bold>None-mptyness Check:@}\n";
-  Typectx.pprint_ctx layout_rty ctx;
+  ctx ();
   Printf.printf "⊢@{<hi_magenta>%s@} is not empty\n\n" (layout_rty r)

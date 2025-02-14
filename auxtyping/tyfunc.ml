@@ -28,6 +28,9 @@ let exists_rty (x : string) (xrty : 't rty) (rty : 't rty) : 't rty =
   in
   rty
 
+let exists_rty x rty = exists_rty x.x x.ty rty
+let exists_rtys = List.fold_right exists_rty
+
 let n_to_one_ctys prop_f = function
   | [] -> _die [%here]
   | { nty; phi } :: ctys ->

@@ -5,6 +5,8 @@ open Typectx
 
 type t = Nt.t
 
+let _log = Myconfig._log_preprocess
+
 let __force_typed loc = function
   | { ty = Nt.Ty_unknown; _ } -> _die loc
   | x -> x
@@ -44,6 +46,9 @@ and bi_typed_term_check (ctx : t ctx) (x : (t, t raw_term) typed) (ty : t) :
 
 and bi_term_check (ctx : t ctx) (x : t raw_term) (ty : t) :
     (t, t raw_term) typed =
+  let () =
+    _log @@ pprint_basic_typing (fun () -> pprint_ctx Nt.layout ctx) (x, ty)
+  in
   match (x, ty) with
   | Err, _ -> Err #: ty
   | Const _, _ | Var _, _ ->

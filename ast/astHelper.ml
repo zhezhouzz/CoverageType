@@ -207,6 +207,40 @@ let mk_bot_overrty nty = RtyBase { ou = Over; cty = mk_bot_cty nty }
 let mk_top_underrty nty = RtyBase { ou = Under; cty = mk_top_cty nty }
 let mk_bot_underrty nty = RtyBase { ou = Under; cty = mk_bot_cty nty }
 
+let mk_eq_tvar_cty x =
+  let open Prop in
+  { nty = x.ty; phi = lit_to_prop (mk_var_eq_var [%here] default_v #: x.ty x) }
+
+let mk_eq_c_cty c =
+  let open Prop in
+  let nty = constant_to_nt c in
+  { nty; phi = lit_to_prop (mk_var_eq_c [%here] default_v #: nty c) }
+
+let mk_eq_tvar_overrty x = RtyBase { ou = Over; cty = mk_eq_tvar_cty x }
+let mk_eq_tvar_underrty x = RtyBase { ou = Under; cty = mk_eq_tvar_cty x }
+let mk_eq_c_overrty x = RtyBase { ou = Over; cty = mk_eq_c_cty x }
+let mk_eq_c_underrty x = RtyBase { ou = Under; cty = mk_eq_c_cty x }
+
+let destruct_grty =
+  let rec aux rty =
+    match rty with
+    | RtyBase _ | RtyProd _ | RtyArr { arr_type = NormalArr; _ } -> ([], rty)
+    | RtyArr { arr_type = GhostOverBaseArr; argrty; arg; retty } ->
+        let arg' = Rename.unique arg in
+        let retty =
+          subst_rty_instance arg (AVar arg' #: (erase_rty argrty)) retty
+        in
+        let gvars, res = aux retty in
+        ((arg #: argrty) :: gvars, res)
+  in
+  aux
+
+let construct_grty gvars rty =
+  List.fold_right
+    (fun x retty ->
+      RtyArr { arr_type = GhostOverBaseArr; argrty = x.ty; arg = x.x; retty })
+    gvars rty
+
 (** Denormalize *)
 
 let rec typed_value_to_typed_raw_term (value_e : ('t, 't value) typed) =
