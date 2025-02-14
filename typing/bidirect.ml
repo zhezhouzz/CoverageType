@@ -4,6 +4,8 @@ open Sugar
 open Auxtyping
 open Common
 
+let instantiate_arrow_rty _ _ _ = failwith "unimp"
+
 let type_check_group (bctx : built_in_ctx) =
   let _id_type_infer loc (rctx : rctx) (id : string) : Nt.t rty =
     let res = lookup_ctxs [ rctx.ctx; rctx.gctx; bctx.builtin_ctx ] id in
@@ -137,6 +139,66 @@ let type_check_group (bctx : built_in_ctx) =
     (*         #: rty *)
     (* | VFix _, _ -> _die [%here] *)
     | VTuple _, _ -> _die [%here]
+  and arrow_type_apply (rctx : rctx) appf_rty
+      (apparg : (Nt.t rty, Nt.t value) typed) : Nt.t rty option =
+    let arr_type, argrty, arg, retty =
+      match appf_rty with
+      | RtyArr { arr_type; argrty; arg; retty } -> (arr_type, argrty, arg, retty)
+      | _ -> _die [%here]
+    in
+    match arr_type with
+    | GhostOverBaseArr ->
+        let gvars, appf_rty = instantiate_arrow_rty rctx appf_rty apparg in
+        let* res = arrow_type_apply rctx appf_rty apparg in
+        Some (construct_grty gvars res)
+    | NormalArr -> (
+        let () =
+          _assert [%here] "application basic type check"
+            (Nt.equal_nt (erase_rty argrty) (erase_rty apparg.ty))
+        in
+        match argrty with
+        | RtyBase { ou = Over; cty } ->
+            let arglit = value_to_lit [%here] apparg.x in
+            let retty = subst_rty_instance arg arglit retty in
+            let tmp_rty =
+              mk_unit_underrty (subst_prop_instance default_v arglit cty.phi)
+            in
+            if not (non_emptiness_rty bctx (rctx_to_ctx rctx) tmp_rty) then (
+              _warinning_nonemptiness_error [%here] argrty;
+              _warinning_typing_error [%here] (layout_lit arglit, argrty);
+              None)
+            else
+              let retty = exists_rty (Rename.unique "_tmp") #: tmp_rty retty in
+              Some retty
+        | RtyBase { ou = Under; cty } ->
+            let arglit =
+              value_to_lit [%here] @@ _get_x @@ (apparg #=> erase_rty)
+            in
+            let retty = subst_rty_instance arg arglit retty in
+            if not (sub_rty bctx (rctx_to_ctx rctx) (apparg.ty, argrty)) then (
+              _warinning_subtyping_error [%here] (apparg.ty, argrty);
+              _warinning_typing_error [%here] (layout_lit arglit, argrty);
+              None)
+            else
+              let gvar = (Rename.unique "_x") #: (RtyBase { ou = Over; cty }) in
+              let tmp_rty =
+                mk_unit_underrty
+                  (lit_to_prop
+                     (mk_lit_eq_lit [%here] (AVar gvar #=> erase_rty) arglit))
+              in
+              let retty = exists_rty (Rename.unique "_tmp") #: tmp_rty retty in
+              Some retty
+        | RtyArr _ ->
+            if not (sub_rty bctx (rctx_to_ctx rctx) (apparg.ty, argrty)) then (
+              _warinning_subtyping_error [%here] (apparg.ty, argrty);
+              _warinning_typing_error [%here]
+                (layout_typed_value @@ (apparg #=> erase_rty), argrty);
+              None)
+            else (
+              _assert [%here] "arrow typed variable cannot be refered"
+                (is_free_rty arg retty);
+              Some retty)
+        | RtyProd _ -> _die [%here])
   and term_type_infer (rctx : rctx) (e : (Nt.t, Nt.t term) typed) :
       (Nt.t rty, Nt.t rty term) typed option =
     let () = pprint_typing_infer_term_before rctx e in
@@ -146,7 +208,26 @@ let type_check_group (bctx : built_in_ctx) =
       | CVal v ->
           let v = value_type_infer rctx v in
           Some (CVal v) #: v.ty
-      | CApp _ | CAppOp _ -> _die [%here]
+      | CApp { appf; apparg } ->
+          let appf, apparg' = map2 (value_type_infer rctx) (appf, apparg) in
+          let* retty = arrow_type_apply rctx appf.ty apparg.x #: apparg'.ty in
+          Some (CApp { appf; apparg = apparg' }) #: retty
+      | CAppOp { op; appopargs } ->
+          let op =
+            op #=> (fun _ ->
+            _id_type_infer [%here] rctx (op_name_for_typectx op.x))
+          in
+          let appopargs =
+            List.map (fun v -> (v, value_type_infer rctx v)) appopargs
+          in
+          let* retty =
+            List.fold_left
+              (fun res (apparg, apparg') ->
+                let* rty = res in
+                arrow_type_apply rctx rty apparg.x #: apparg'.ty)
+              (Some op.ty) appopargs
+          in
+          Some (CAppOp { op; appopargs = List.map snd appopargs }) #: retty
       | CMatch { matched; match_cases } ->
           (* NOTE: we drop unreachable cases *)
           let match_cases =

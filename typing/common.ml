@@ -33,7 +33,7 @@ let _warinning_subtyping_error loc (rty1, rty2) =
   Pp.printf "@{<bold>Type Error at %s:@} %s <: %s\n" (pos_to_string loc)
     (layout_rty rty1) (layout_rty rty2)
 
-let _warinning_subtyping_emptyness_error loc rty1 =
+let _warinning_nonemptiness_error loc rty1 =
   _log @@ fun _ ->
   Pp.printf "@{<bold>Type Error at %s:@} %s is empty type\n" (pos_to_string loc)
     (layout_rty rty1)

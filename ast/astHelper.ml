@@ -130,6 +130,16 @@ let term_to_value e = match e.x with CVal v -> v.x #: e.ty | _ -> _die [%here]
 let id_to_value v = (VVar v) #: v.ty
 let id_to_term v = value_to_term @@ id_to_value v
 
+let map_rty_retty f rty =
+  let rec aux rty =
+    match rty with
+    | RtyBase _ -> f rty
+    | RtyArr { arr_type; argrty; arg; retty } ->
+        RtyArr { arr_type; argrty; arg; retty = f retty }
+    | RtyProd (r1, r2) -> RtyProd (aux r1, aux r2)
+  in
+  aux rty
+
 let mk_lam lamarg body =
   (VLam { lamarg; body }) #: (Nt.mk_arr lamarg.ty body.ty)
 
@@ -207,15 +217,23 @@ let mk_bot_overrty nty = RtyBase { ou = Over; cty = mk_bot_cty nty }
 let mk_top_underrty nty = RtyBase { ou = Under; cty = mk_top_cty nty }
 let mk_bot_underrty nty = RtyBase { ou = Under; cty = mk_bot_cty nty }
 
-let mk_eq_tvar_cty x =
-  let open Prop in
-  { nty = x.ty; phi = lit_to_prop (mk_var_eq_var [%here] default_v #: x.ty x) }
+let mk_unit_underrty phi =
+  RtyBase { ou = Under; cty = { nty = Nt.Ty_unit; phi } }
 
-let mk_eq_c_cty c =
-  let open Prop in
-  let nty = constant_to_nt c in
-  { nty; phi = lit_to_prop (mk_var_eq_c [%here] default_v #: nty c) }
+open Prop
 
+let value_to_lit loc = function
+  | VVar x -> AVar x
+  | VConst c -> AC c
+  | _ -> _die loc
+
+let mk_eq_var_prop x = lit_to_prop (mk_var_eq_var [%here] default_v #: x.ty x)
+
+let mk_eq_c_prop c =
+  lit_to_prop (mk_var_eq_c [%here] default_v #: (constant_to_nt c) c)
+
+let mk_eq_tvar_cty x = { nty = x.ty; phi = mk_eq_var_prop x }
+let mk_eq_c_cty c = { nty = constant_to_nt c; phi = mk_eq_c_prop c }
 let mk_eq_tvar_overrty x = RtyBase { ou = Over; cty = mk_eq_tvar_cty x }
 let mk_eq_tvar_underrty x = RtyBase { ou = Under; cty = mk_eq_tvar_cty x }
 let mk_eq_c_overrty x = RtyBase { ou = Over; cty = mk_eq_c_cty x }
