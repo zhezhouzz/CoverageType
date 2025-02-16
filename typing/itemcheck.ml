@@ -3,7 +3,7 @@ open Zutils
 open Bidirect
 open Zdatatype
 
-let _log = Myconfig._log_typing
+let _log = Myconfig._log_result
 
 let _task_info name rty =
   _log @@ fun _ ->

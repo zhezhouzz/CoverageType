@@ -42,7 +42,7 @@ let check_sat axioms query =
   let _ = Prover.update_axioms axioms in
   Prover.check_sat_bool query
 
-let sub_cty builtin_ctx ctx cty1 cty2 =
+let sub_cty ou builtin_ctx ctx cty1 cty2 =
   let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list ctx) in
   let () =
     _log_queries @@ fun _ ->
@@ -53,19 +53,34 @@ let sub_cty builtin_ctx ctx cty1 cty2 =
       List.map (fun (x, cty) -> x #: (RtyBase { ou = Under; cty })) underctx
     in
     let ctx' = Typectx.ctx_from_list (overctx @ underctx) in
-    Typectx.pprint_ctx layout_rty ctx'
+    Typectx.pprint_ctx layout_rty ctx';
+    print_newline ()
   in
   let () =
+    let dom = List.map fst (overctx @ underctx) in
     _assert [%here]
-      "left-hand-side type should be closed under over + under ctx"
-      (is_close_cty (List.map fst (overctx @ underctx)) cty1)
+      (spf
+         "left-hand-side type %s should be closed under over + under ctx: [ %s \
+          ]"
+         (layout_rty (RtyBase { ou; cty = cty1 }))
+         (StrList.to_string dom))
+      (is_close_cty dom cty1)
   in
   let () =
-    _assert [%here] "right-hand-side type should be closed under over ctx"
-      (is_close_cty (List.map fst overctx) cty2)
+    let dom = List.map fst overctx in
+    _assert [%here]
+      (spf "right-hand-side type %s should be closed under over ctx: [ %s ]"
+         (layout_rty (RtyBase { ou; cty = cty2 }))
+         (StrList.to_string dom))
+      (is_close_cty dom cty2)
   in
   let nty = Nt._type_unify [%here] cty1.nty cty2.nty in
   let overctx = (default_v, mk_top_cty nty) :: overctx in
+  let query =
+    match ou with
+    | Over -> smart_implies cty1.phi cty2.phi
+    | Under -> smart_implies cty2.phi cty1.phi
+  in
   let query =
     List.fold_right
       (fun (x, { nty; phi }) query ->
@@ -74,8 +89,7 @@ let sub_cty builtin_ctx ctx cty1 cty2 =
     @@ List.fold_right
          (fun (x, { nty; phi }) query ->
            smart_exists [ x #: nty ] (smart_add_to phi query))
-         underctx
-    @@ smart_implies cty1.phi cty2.phi
+         underctx query
   in
   let () =
     _log_queries @@ fun _ ->
@@ -85,6 +99,7 @@ let sub_cty builtin_ctx ctx cty1 cty2 =
 
 let non_emptiness_cty builtin_ctx ctx cty =
   let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list ctx) in
+  let underctx = underctx @ [ (default_v, mk_top_cty cty.nty) ] in
   let () =
     _log_queries @@ fun _ ->
     let overctx =
@@ -94,14 +109,14 @@ let non_emptiness_cty builtin_ctx ctx cty =
       List.map (fun (x, cty) -> x #: (RtyBase { ou = Under; cty })) underctx
     in
     let ctx' = Typectx.ctx_from_list (overctx @ underctx) in
-    Typectx.pprint_ctx layout_rty ctx'
+    Typectx.pprint_ctx layout_rty ctx';
+    print_newline ()
   in
   let () =
     _assert [%here]
       "left-hand-side type should be closed under over + under ctx"
       (is_close_cty (List.map fst (overctx @ underctx)) cty)
   in
-  let underctx = underctx @ [ (default_v, mk_top_cty cty.nty) ] in
   let query =
     List.fold_right
       (fun (x, { nty; phi }) query ->

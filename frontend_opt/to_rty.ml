@@ -48,13 +48,12 @@ let rec rty_of_expr expr =
       let arr_type = get_arr_type rtyexpr in
       let argrty = rty_of_expr rtyexpr in
       RtyArr { arr_type; argrty; arg; retty }
-  (* | Pexp_let (_, [ vb ], body) -> ( *)
-  (*     let retty = rty_of_expr body in *)
-  (*     let arg = id_of_pattern vb.pvb_pat in *)
-  (*     match rty_of_expr vb.pvb_expr with *)
-  (*     | RtyBase { cty; _ } -> RtyBaseArr { argcty = cty; arg; retty } *)
-  (*     | RtyTuple _ -> _die [%here] *)
-  (*     | argrty -> RtyArrArr { argrty; retty }) *)
+  | Pexp_let (_, [ vb ], body) ->
+      let retty = rty_of_expr body in
+      let arg = id_of_pattern vb.pvb_pat in
+      let arr_type = get_arr_type vb.pvb_expr in
+      let argrty = rty_of_expr vb.pvb_expr in
+      RtyArr { arr_type; argrty; arg; retty }
   | Pexp_tuple es -> mk_rty_tuple (List.map rty_of_expr es)
   | _ ->
       _failatwith [%here]

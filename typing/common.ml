@@ -20,15 +20,28 @@ module Rctx = struct
     let x = x.x #: rty in
     ({ gctx; ctx }, x)
 
+  let add_base_vars = List.fold_left (fun ctx x -> fst @@ add_var ctx x)
+
   let diff_exists_rty_opt ctx1 ctx2 rty =
     let* gvars = subtract_opt (equal_rty Nt.equal_nt) ctx1.gctx ctx2.gctx in
     let* vars = subtract_opt (equal_rty Nt.equal_nt) ctx1.ctx ctx2.ctx in
+    let _ =
+      _log @@ fun () ->
+      Pp.printf "exists [%s], [%s] into %s\n" (layout_rtyed_vars gvars)
+        (layout_rtyed_vars vars) (layout_rty rty)
+    in
     Some (construct_grty gvars @@ exists_rtys vars rty)
 
   let diff_exists_rty loc ctx1 ctx2 rty =
     match diff_exists_rty_opt ctx1 ctx2 rty with
     | None -> _die loc
     | Some rty -> rty
+
+  let pprint { gctx; ctx } () =
+    Typectx.pprint_ctx layout_rty gctx;
+    print_newline ();
+    Typectx.pprint_ctx layout_rty ctx;
+    print_newline ()
 end
 
 open Rctx
@@ -49,55 +62,27 @@ let _warinning_typing_error loc (str, rty) =
     (layout_rty rty)
 
 let pprint_typing_check_term rctx (e, ty) =
-  _log
-  @@ pprint_typing_check
-       (fun () ->
-         Typectx.pprint_ctx layout_rty rctx.gctx;
-         Typectx.pprint_ctx layout_rty rctx.ctx)
-       (layout_typed_term e, layout_rty ty)
+  _log @@ pprint_typing_check (pprint rctx) (layout_typed_term e, layout_rty ty)
 
 let pprint_typing_infer_term_before rctx e =
-  _log
-  @@ pprint_typing_infer
-       (fun () ->
-         Typectx.pprint_ctx layout_rty rctx.gctx;
-         Typectx.pprint_ctx layout_rty rctx.ctx)
-       (layout_typed_term e, "??")
+  _log @@ pprint_typing_infer (pprint rctx) (layout_typed_term e, "??")
 
 let layout_rty_opt res =
   match res with Some res -> layout_rty res | None -> "None"
 
 let pprint_typing_infer_term_after rctx (e, ty) =
   _log
-  @@ pprint_typing_infer
-       (fun () ->
-         Typectx.pprint_ctx layout_rty rctx.gctx;
-         Typectx.pprint_ctx layout_rty rctx.ctx)
-       (layout_typed_term e, layout_rty_opt ty)
+  @@ pprint_typing_infer (pprint rctx) (layout_typed_term e, layout_rty_opt ty)
 
 let pprint_typing_check_value rctx (e, ty) =
-  _log
-  @@ pprint_typing_check
-       (fun () ->
-         Typectx.pprint_ctx layout_rty rctx.gctx;
-         Typectx.pprint_ctx layout_rty rctx.ctx)
-       (layout_typed_value e, layout_rty ty)
+  _log @@ pprint_typing_check (pprint rctx) (layout_typed_value e, layout_rty ty)
 
 let pprint_typing_infer_value_before rctx e =
-  _log
-  @@ pprint_typing_infer
-       (fun () ->
-         Typectx.pprint_ctx layout_rty rctx.gctx;
-         Typectx.pprint_ctx layout_rty rctx.ctx)
-       (layout_typed_value e, "??")
+  _log @@ pprint_typing_infer (pprint rctx) (layout_typed_value e, "??")
 
 let pprint_typing_infer_value_after rctx (e, ty) =
   _log
-  @@ pprint_typing_infer
-       (fun () ->
-         Typectx.pprint_ctx layout_rty rctx.gctx;
-         Typectx.pprint_ctx layout_rty rctx.ctx)
-       (layout_typed_value e, layout_rty_opt ty)
+  @@ pprint_typing_infer (pprint rctx) (layout_typed_value e, layout_rty_opt ty)
 
 let rec lookup_ctxs ctxs id =
   match ctxs with
@@ -106,3 +91,5 @@ let rec lookup_ctxs ctxs id =
       match get_opt ctx id with
       | Some res -> Some res
       | None -> lookup_ctxs ctxs id)
+
+(** Debug *)

@@ -76,6 +76,12 @@ open Sugar
 let is_free_cty x rty = List.exists (String.equal x) @@ fv_cty_id rty
 
 let is_close_cty dom rty =
+  (* let open Zdatatype in *)
+  (* let () = *)
+  (*   Printf.printf "fvs: %s; dom: %s\n" *)
+  (*     (StrList.to_string (fv_cty_id rty)) *)
+  (*     (StrList.to_string dom) *)
+  (* in *)
   List.for_all (fun x -> List.exists (String.equal x) dom) @@ fv_cty_id rty
 
 let is_free_rty x rty = List.exists (String.equal x) @@ fv_rty_id rty

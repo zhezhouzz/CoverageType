@@ -7,9 +7,9 @@ let rec sub_rty bctx rctx (rty1, rty2) =
   let rec aux rctx (rty1, rty2) =
     match (rty1, rty2) with
     | RtyBase { ou = Over; cty = cty1 }, RtyBase { ou = Over; cty = cty2 } ->
-        sub_cty bctx rctx cty1 cty2
+        sub_cty Over bctx rctx cty1 cty2
     | RtyBase { ou = Under; cty = cty1 }, RtyBase { ou = Under; cty = cty2 } ->
-        sub_cty bctx rctx cty2 cty1
+        sub_cty Under bctx rctx cty1 cty2
     | ( RtyArr
           {
             arr_type = GhostOverBaseArr;

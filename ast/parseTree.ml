@@ -81,8 +81,8 @@ and 't raw_match_case =
 type constructor_declaration = { constr_name : string; argsty : Nt.nt list }
 [@@deriving eq, ord, show, sexp]
 
-(* NOTE: vv is default variable *)
-let default_v = "vv"
+(* NOTE: v is default variable *)
+let default_v = "v"
 
 type 't cty = { nty : Nt.nt; phi : 't prop } [@@deriving eq, ord, show, sexp]
 type ou = Over | Under [@@deriving eq, ord, show, sexp]

@@ -113,7 +113,7 @@ let type_check_group (bctx : built_in_ctx) =
     (*             (VFix *)
     (*                { fixname = fixname.x #: rty; fixarg = binding; body = clam }) *)
     (*             #: rty *)
-    (*       | _ -> _failatwith [%here] "die" *)
+    (*       | _ -> _die [%here] *)
     (*     else *)
     (*       let rec_constraint_cty = apply_rec_arg1 arg #: fixarg.ty in *)
     (*       let () = init_cur_rec_func_name (fixname.x, rec_constraint_cty) in *)
@@ -263,60 +263,62 @@ let type_check_group (bctx : built_in_ctx) =
     | CVal v ->
         let* v = value_type_check rctx v rty in
         Some (CVal v) #: v.ty
-    | CApp _ | CAppOp _ | CMatch _ ->
+    | CApp _ | CAppOp _ | CMatch _ | CLetE _ ->
         let* e' = term_type_infer rctx e in
         if sub_rty bctx (Rctx.to_ctx rctx) (e'.ty, rty) then Some e'.x #: rty
         else (
           _warinning_subtyping_error [%here] (e'.ty, rty);
           _warinning_typing_error [%here] (layout_typed_term e, rty);
           None)
-    | CLetE { rhs; lhs; body } ->
-        let* rhs = term_type_infer rctx rhs in
-        let rctx', lhs = Rctx.add_var rctx lhs.x #: rhs.ty in
-        let* body = term_type_check rctx' body rty in
-        Some (CLetE { rhs; lhs; body }) #: rty
-  and match_case_type_infer _ _ _ =
-    _failatwith [%here] "unimp"
-    (* and match_case_type_infer (rctx : rctx) (matched : (Nt.t, Nt.t value) typed) *)
-    (*     (x : Nt.t match_case) : Nt.t rty match_case option = *)
-    (*   match x with *)
-    (*   | CMatchcase { constructor; args; exp } -> *)
-    (*       let constructor_rty = *)
-    (*         _id_type_infer [%here] ctx (dt_name_for_typectx constructor.x) *)
-    (*       in *)
-    (*       let args, retty = *)
-    (*         List.fold_left *)
-    (*           (fun (args, rty) x -> *)
-    (*             match rty with *)
-    (*             | RtyBaseArr { argcty; arg; retty } -> *)
-    (*                 let retty = subst_rty_instance arg (AVar x) retty in *)
-    (*                 let x = x.x #: (RtyBase { ou = false; cty = argcty }) in *)
-    (*                 (args @ [ x ], retty) *)
-    (*             | RtyArrArr { argrty; retty } -> *)
-    (*                 let x = x.x #: argrty in *)
-    (*                 (args @ [ x ], retty) *)
-    (*             | _ -> _failatwith [%here] "die") *)
-    (*           ([], constructor_rty) args *)
-    (*       in *)
-    (*       let retty = *)
-    (*         match retty with *)
-    (*         | RtyBase { ou = false; cty = Cty { phi; _ } } -> *)
-    (*             let lit = Checkaux.typed_value_to_typed_lit [%here] matched in *)
-    (*             let phi = subst_prop_instance default_v lit.x phi in *)
-    (*             RtyBase { ou = false; cty = Cty { nty = Nt.unit_ty; phi } } *)
-    (*         | _ -> _failatwith [%here] "die" *)
-    (*       in *)
-    (*       let dummy = (Rename.unique "dummy") #: retty in *)
-    (*       let bindings = args @ [ dummy ] in *)
-    (*       let* exp = term_type_infer (add_to_rights ctx bindings) exp in *)
-    (*       (\* let _ = *\) *)
-    (*       (\*   Printf.printf "exists %s\n" *\) *)
-    (*       (\*   @@ List.split_by_comma (fun x -> x.x) bindings *\) *)
-    (*       (\* in *\) *)
-    (*       let exp = exp.x #: (exists_rtys_to_rty bindings exp.ty) in *)
-    (*       Some *)
-    (*         (CMatchcase *)
-    (*            { constructor = constructor.x #: constructor_rty; args; exp }) *)
+  (* | CLetE { rhs; lhs; body } -> *)
+  (*     let* rhs = term_type_infer rctx rhs in *)
+  (*     let rctx', lhs = Rctx.add_var rctx lhs.x #: rhs.ty in *)
+  (*     let* body = term_type_check rctx' body rty in *)
+  (*     Some (CLetE { rhs; lhs; body }) #: rty *)
+  and match_case_type_infer (rctx : rctx) (matched : (Nt.t, Nt.t value) typed)
+      (x : Nt.t match_case) : Nt.t rty match_case option =
+    match x with
+    | CMatchcase { constructor; args; exp } ->
+        let constructor_rty =
+          match lookup_ctxs [ bctx.builtin_ctx ] constructor.x with
+          | Some rty -> rty
+          | None ->
+              _failatwith [%here]
+              @@ spf "cannot find rty of constructor %s from builtin context"
+                   constructor.x
+        in
+        let () =
+          Printf.printf "%s: %s\n" constructor.x (layout_rty constructor_rty)
+        in
+        let args, retty =
+          List.fold_left
+            (fun (args, rty) x ->
+              match rty with
+              | RtyArr { arr_type = NormalArr; argrty; arg; retty } ->
+                  let retty = subst_rty_instance arg (AVar x) retty in
+                  (args @ [ x.x #: argrty ], retty)
+              | _ -> _die [%here])
+            ([], constructor_rty) args
+        in
+        let retty =
+          match retty with
+          | RtyBase { ou = Under; cty = { phi; _ } } ->
+              let phi =
+                subst_prop_instance default_v
+                  (value_to_lit [%here] matched.x)
+                  phi
+              in
+              RtyBase { ou = Under; cty = { nty = Nt.Ty_unit; phi } }
+          | _ -> _die [%here]
+        in
+        let rctx' =
+          Rctx.add_base_vars rctx (args @ [ (Rename.unique "dummy") #: retty ])
+        in
+        let* exp = term_type_infer rctx' exp in
+        let exp = exp.x #: (Rctx.diff_exists_rty [%here] rctx' rctx exp.ty) in
+        Some
+          (CMatchcase
+             { constructor = constructor.x #: constructor_rty; args; exp })
   in
   (value_type_check, term_type_check)
 

@@ -1,14 +1,18 @@
 open Language
 open Zutils
+open Zdatatype
 
 let exists_cty (x : string) ({ nty; phi } : 't cty) (cty : 't cty) : 't cty =
   match nty with
   | Nt.Ty_unit -> { cty with phi = smart_add_to phi cty.phi }
-  | _ -> { cty with phi = smart_exists [ x #: nty ] (smart_add_to phi cty.phi) }
+  | _ ->
+      let phi = subst_prop_instance default_v (AVar x #: nty) phi in
+      { cty with phi = smart_exists [ x #: nty ] (smart_add_to phi cty.phi) }
 
 let exists_rty (x : string) (xrty : 't rty) (rty : 't rty) : 't rty =
   let dom =
-    List.filter (fun var -> not @@ String.equal x var) @@ fv_rty_id rty
+    List.filter (fun var -> not @@ String.equal x var)
+    @@ fv_rty_id rty @ fv_rty_id xrty
   in
   let xcty =
     match xrty with RtyBase { ou = Under; cty } -> cty | _ -> _die [%here]
@@ -24,14 +28,18 @@ let exists_rty (x : string) (xrty : 't rty) (rty : 't rty) : 't rty =
   in
   let rty = aux rty in
   let () =
-    _assert [%here] "exists should keep type closed" @@ is_close_rty dom rty
+    _assert [%here]
+      (spf "exists: %s should closed under DOM[ %s ]" (layout_rty rty)
+         (StrList.to_string dom))
+    @@ is_close_rty dom rty
   in
   rty
 
 let exists_rty x rty =
   match x.ty with
   | RtyBase { ou = Under; cty = { nty = Nt.Ty_unit; _ } } ->
-      _assert [%here] "unit variable cannot be refered" (is_free_rty x.x rty);
+      _assert [%here] "unit variable cannot be refered"
+        (not @@ is_free_rty x.x rty);
       map_rty_retty (exists_rty x.x x.ty) rty
   | _ -> exists_rty x.x x.ty rty
 
