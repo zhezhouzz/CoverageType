@@ -9,7 +9,7 @@ let instantiate_arrow_rty _ _ _ = failwith "unimp"
 
 let type_check_group (bctx : built_in_ctx) =
   let _id_type_infer loc (rctx : rctx) (id : string) : Nt.t rty =
-    let res = lookup_ctxs [ rctx.ctx; rctx.gctx; bctx.builtin_ctx ] id in
+    let res = lookup_ctxs [ Rctx.to_ctx rctx; bctx.builtin_ctx ] id in
     let rty =
       match res with
       | Some res -> res
@@ -63,7 +63,7 @@ let type_check_group (bctx : built_in_ctx) =
     let () = pprint_typing_check_value rctx (v, rty) in
     match (v.x, rty) with
     | _, RtyArr { arr_type = GhostOverBaseArr; argrty; arg; retty } ->
-        value_type_check (Rctx.add_gvar rctx arg #: argrty) v retty
+        value_type_check (Rctx.add_var rctx arg #: argrty) v retty
     | VConst _, _ | VVar _, _ | VTuple _, _ ->
         let e = value_type_infer rctx v in
         if sub_rty bctx (Rctx.to_ctx rctx) (e.ty, rty) then Some e
@@ -75,7 +75,8 @@ let type_check_group (bctx : built_in_ctx) =
       ->
         (* Note: unify the name of parameter type and lambda variable *)
         let retty = subst_rty_instance arg (AVar lamarg) retty in
-        let rctx', lamarg = Rctx.add_var rctx lamarg.x #: argrty in
+        let lamarg = lamarg.x #: argrty in
+        let rctx' = Rctx.add_var rctx lamarg in
         let* body = term_type_check rctx' body retty in
         Some
           (VLam { lamarg; body })
@@ -264,7 +265,8 @@ let type_check_group (bctx : built_in_ctx) =
       | CLetDeTuple _ -> failwith "unimp"
       | CLetE { rhs; lhs; body } ->
           let* rhs = term_type_infer rctx rhs in
-          let rctx', lhs = Rctx.add_var rctx lhs.x #: rhs.ty in
+          let lhs = lhs.x #: rhs.ty in
+          let rctx' = Rctx.add_var rctx lhs in
           let* body = term_type_infer rctx' body in
           Some
             (CLetE { rhs; lhs; body })
@@ -333,7 +335,7 @@ let type_check_group (bctx : built_in_ctx) =
           | _ -> _die [%here]
         in
         let rctx' =
-          Rctx.add_base_vars rctx (args @ [ (Rename.unique "dummy") #: retty ])
+          Rctx.add_vars rctx (args @ [ (Rename.unique "dummy") #: retty ])
         in
         let* exp = term_type_infer rctx' exp in
         let exp = exp.x #: (Rctx.diff_exists_rty [%here] rctx' rctx exp.ty) in

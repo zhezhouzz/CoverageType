@@ -7,24 +7,32 @@ open Auxtyping
 let _log = Myconfig._log_typing
 
 module Rctx = struct
-  type rctx = { gctx : Nt.t rty ctx; ctx : Nt.t rty ctx }
+  type rctx = Nt.t rty ctx
 
-  let emp = { gctx = emp; ctx = emp }
-  let to_ctx { gctx; ctx } = concat gctx ctx
-  let add_gvar rctx x = { rctx with gctx = add_to_right rctx.gctx x }
+  let emp = Typectx.emp
 
-  let add_var { gctx; ctx } x =
-    let gvars, rty = destruct_grty x.ty in
-    let gctx = add_to_rights gctx gvars in
-    let ctx = add_to_right ctx x.x #: rty in
-    let x = x.x #: rty in
-    ({ gctx; ctx }, x)
+  let to_ctx_g_v_pair ctx =
+    let rec aux (gctx, ctx) l =
+      match l with
+      | [] -> (gctx, ctx)
+      | x :: l ->
+          let gvars, rty = destruct_grty x.ty in
+          let gctx = Typectx.add_to_rights gctx gvars in
+          let ctx = Typectx.add_to_right ctx x.x #: rty in
+          aux (gctx, ctx) l
+    in
+    Typectx.(aux (emp, emp) ctx)
 
-  let add_base_vars = List.fold_left (fun ctx x -> fst @@ add_var ctx x)
+  let to_ctx ctx =
+    let gctx, ctx = to_ctx_g_v_pair (Typectx.ctx_to_list ctx) in
+    Typectx.concat gctx ctx
+
+  let add_var ctx x = add_to_right ctx x
+  let add_vars res l = List.fold_left add_var res l
 
   let diff_exists_rty_opt ctx1 ctx2 rty =
-    let* gvars = subtract_opt (equal_rty Nt.equal_nt) ctx1.gctx ctx2.gctx in
-    let* vars = subtract_opt (equal_rty Nt.equal_nt) ctx1.ctx ctx2.ctx in
+    let* ctx = subtract_opt (equal_rty Nt.equal_nt) ctx1 ctx2 in
+    let gvars, vars = map2 Typectx.ctx_to_list @@ to_ctx_g_v_pair ctx in
     let _ =
       _log @@ fun () ->
       Pp.printf "exists [%s], [%s] into %s\n" (layout_rtyed_vars gvars)
@@ -37,9 +45,7 @@ module Rctx = struct
     | None -> _die loc
     | Some rty -> rty
 
-  let pprint { gctx; ctx } () =
-    Typectx.pprint_ctx layout_rty gctx;
-    print_newline ();
+  let pprint ctx () =
     Typectx.pprint_ctx layout_rty ctx;
     print_newline ()
 end
