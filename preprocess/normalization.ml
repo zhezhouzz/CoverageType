@@ -95,9 +95,9 @@ and normalize_get_comp (k : 't cont) (expr : ('t, 't raw_term) typed) :
              match_cases =
                [
                  Matchcase
-                   { constructor = "True" #: Nt.Ty_bool; args = []; exp = et };
+                   { constructor = "True" #: Nt.bool_ty; args = []; exp = et };
                  Matchcase
-                   { constructor = "False" #: Nt.Ty_bool; args = []; exp = ef };
+                   { constructor = "False" #: Nt.bool_ty; args = []; exp = ef };
                ];
            })
         #: expr.ty

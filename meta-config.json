@@ -12,7 +12,7 @@
         "queries",
         // "model",
         // "z3encode",
-        // "preprocess",
+        "preprocess",
         "typing",
         "result",
         // "desym_mapping",

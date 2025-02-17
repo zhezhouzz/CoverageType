@@ -37,7 +37,7 @@ let ocaml_structure_item_to_item structure =
                      name;
                      rty = rty_of_expr value_binding.pvb_expr;
                    }
-             | "library" ->
+             | "library" | "assume" ->
                  MRty
                    {
                      is_assumption = true;

@@ -3,11 +3,10 @@ open Zutils
 open Zdatatype
 
 let exists_cty (x : string) ({ nty; phi } : 't cty) (cty : 't cty) : 't cty =
-  match nty with
-  | Nt.Ty_unit -> { cty with phi = smart_add_to phi cty.phi }
-  | _ ->
-      let phi = subst_prop_instance default_v (AVar x #: nty) phi in
-      { cty with phi = smart_exists [ x #: nty ] (smart_add_to phi cty.phi) }
+  if Nt.equal_nt Nt.unit_ty nty then { cty with phi = smart_add_to phi cty.phi }
+  else
+    let phi = subst_prop_instance default_v (AVar x #: nty) phi in
+    { cty with phi = smart_exists [ x #: nty ] (smart_add_to phi cty.phi) }
 
 let exists_rty (x : string) (xrty : 't rty) (rty : 't rty) : 't rty =
   let dom =
@@ -37,7 +36,7 @@ let exists_rty (x : string) (xrty : 't rty) (rty : 't rty) : 't rty =
 
 let exists_rty x rty =
   match x.ty with
-  | RtyBase { ou = Under; cty = { nty = Nt.Ty_unit; _ } } ->
+  | RtyBase { ou = Under; cty = { nty; _ } } when Nt.equal_nt Nt.unit_ty nty ->
       _assert [%here] "unit variable cannot be refered"
         (not @@ is_free_rty x.x rty);
       map_rty_retty (exists_rty x.x x.ty) rty

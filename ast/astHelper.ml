@@ -3,6 +3,7 @@ open Zutils
 open Fv
 open Subst
 open Map
+open Zdatatype
 
 let fv_value_id e = fv_typed_id_to_id fv_value e
 let typed_fv_value_id e = fv_typed_id_to_id typed_fv_value e
@@ -118,15 +119,22 @@ let build_wf_ctx (ctx : ('t rty, string) typed list) =
         else _die [%here]
     | { x; ty = RtyBase { ou = Under; cty } as rty } :: ctx ->
         let dom = List.map fst over_ctx @ List.map fst under_ctx in
-        if is_close_rty dom rty then
-          aux (over_ctx, under_ctx @ [ (x, cty) ]) ctx
-        else _die [%here]
+        _assert [%here]
+          (spf "%s should be closed under %s"
+             (show_rty (fun _ _ -> ()) rty)
+             (StrList.to_string dom))
+          (is_close_rty dom rty);
+        aux (over_ctx, under_ctx @ [ (x, cty) ]) ctx
     | { x; ty = RtyProd _ } :: _ ->
         _die_with [%here] (spf "unimp prod type of %s" x)
     | { x; ty = RtyArr _ as rty } :: ctx ->
         let dom = List.map fst over_ctx in
-        if is_close_rty dom rty then aux (over_ctx, under_ctx) ctx
-        else _die [%here]
+        _assert [%here]
+          (spf "%s should be closed under %s"
+             (show_rty (fun _ _ -> ()) rty)
+             (StrList.to_string dom))
+          (is_close_rty dom rty);
+        aux (over_ctx, under_ctx) ctx
   in
   aux ([], []) ctx
 
@@ -224,7 +232,7 @@ let mk_top_underrty nty = RtyBase { ou = Under; cty = mk_top_cty nty }
 let mk_bot_underrty nty = RtyBase { ou = Under; cty = mk_bot_cty nty }
 
 let mk_unit_underrty phi =
-  RtyBase { ou = Under; cty = { nty = Nt.Ty_unit; phi } }
+  RtyBase { ou = Under; cty = { nty = Nt.unit_ty; phi } }
 
 open Prop
 
@@ -255,7 +263,7 @@ let destruct_grty =
           subst_rty_instance arg (AVar arg' #: (erase_rty argrty)) retty
         in
         let gvars, res = aux retty in
-        ((arg #: argrty) :: gvars, res)
+        ((arg' #: argrty) :: gvars, res)
   in
   aux
 

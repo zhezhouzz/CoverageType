@@ -12,6 +12,12 @@ let __force_typed loc = function
   | x -> x
 
 let bi_typed_cty_check (ctx : t ctx) (cty : t cty) : t cty =
+  let () =
+    _log @@ fun _ ->
+    pprint_ctx Nt.layout ctx;
+    print_newline ();
+    Printf.printf "cty: %s\n" (layout_cty cty)
+  in
   match cty with
   | { phi; nty } ->
       let phi = bi_typed_prop_check (add_to_right ctx default_v #: nty) phi in
@@ -108,7 +114,7 @@ and bi_term_check (ctx : t ctx) (x : t raw_term) (ty : t) :
       let letbody = bi_typed_term_check ctx' letbody ty in
       (Let { if_rec; rhs; lhs; letbody }) #: ty
   | Ifte (e1, e2, e3), _ ->
-      let e1 = bi_typed_term_check ctx e1 Ty_bool in
+      let e1 = bi_typed_term_check ctx e1 Nt.bool_ty in
       let e2 = bi_typed_term_check ctx e2 ty in
       let e3 = bi_typed_term_check ctx e3 ty in
       (Ifte (e1, e2, e3)) #: ty
@@ -191,7 +197,7 @@ and bi_term_infer (ctx : t ctx) (x : t raw_term) : (t, t raw_term) typed =
       let letbody = bi_typed_term_infer ctx' letbody in
       (Let { if_rec; rhs; lhs; letbody }) #: letbody.ty
   | Ifte (e1, e2, e3) ->
-      let e1 = bi_typed_term_check ctx e1 Ty_bool in
+      let e1 = bi_typed_term_check ctx e1 Nt.bool_ty in
       let e2 = bi_typed_term_infer ctx e2 in
       let e3 = bi_typed_term_check ctx e3 e2.ty in
       (Ifte (e1, e2, e3)) #: e2.ty
@@ -285,7 +291,23 @@ let item_check ctx (e : t item) : t ctx * t item =
   | MAxiom { name; prop } ->
       (ctx, MAxiom { name; prop = bi_typed_prop_check ctx prop })
   | MRty { is_assumption; name; rty } ->
-      (ctx, MRty { is_assumption; name; rty = bi_typed_rty_check ctx rty })
+      let rty = bi_typed_rty_check ctx rty in
+      let item = MRty { is_assumption; name; rty } in
+      let ctx =
+        if is_assumption then
+          match get_opt ctx name with
+          | Some rty' ->
+              (* let () = *)
+              (*   Printf.printf "%s =? %s ==> %b\n" (Nt.show_nt rty') *)
+              (*     (Nt.show_nt (erase_rty rty)) *)
+              (*     (Nt.equal_nt rty' (erase_rty rty)) *)
+              (* in *)
+              let _ = Nt._type_unify [%here] rty' (erase_rty rty) in
+              ctx
+          | None -> add_to_right ctx name #: (erase_rty rty)
+        else ctx
+      in
+      (ctx, item)
   | MFuncImpRaw { name; if_rec = false; body } ->
       let body = bi_typed_term_infer ctx body in
       let name = name.x #: body.ty in

@@ -21,12 +21,10 @@ let pprint_phi (phi : 't prop) =
   match res with None -> layout_prop phi | Some c -> layout_constant c
 
 let pprint = function
-  | { nty; phi } -> (
+  | { nty; phi } ->
       if is_true phi then Nt.layout nty
-      else
-        match nty with
-        | Nt.Ty_unit -> layout_prop phi
-        | _ -> spf "%s:%s | %s" default_v (Nt.layout nty) (layout_prop phi))
+      else if Nt.equal_nt Nt.unit_ty nty then layout_prop phi
+      else spf "%s:%s | %s" default_v (Nt.layout nty) (layout_prop phi)
 
 let layout_cty = pprint
 

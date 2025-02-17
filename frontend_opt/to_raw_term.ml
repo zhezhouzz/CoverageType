@@ -182,7 +182,7 @@ let typed_raw_term_of_expr expr =
     | Pexp_ifthenelse (e1, e2, Some e3) ->
         (Ifte (aux e1, aux e2, aux e3)) #: Nt.Ty_unknown
     | Pexp_ifthenelse (e1, e2, None) ->
-        (Ifte (aux e1, aux e2, (Const U) #: Nt.Ty_unit)) #: Nt.Ty_unknown
+        (Ifte (aux e1, aux e2, (Const U) #: Nt.unit_ty)) #: Nt.Ty_unknown
     | Pexp_match (matched, match_cases) ->
         let match_cases =
           List.map
@@ -219,7 +219,7 @@ let typed_raw_term_of_expr expr =
         (Lam { lamarg; lambody = aux expr }) #: Nt.Ty_unknown
         (* un-curry *)
     | Pexp_sequence (e1, e2) ->
-        let lhs = [ { x = Rename.unique "unused"; ty = Nt.Ty_unit } ] in
+        let lhs = [ { x = Rename.unique "unused"; ty = Nt.unit_ty } ] in
         let rhs = aux e1 in
         let letbody = aux e2 in
         (Let { if_rec = false; lhs; rhs; letbody }) #: Nt.Ty_unknown
