@@ -108,36 +108,6 @@ let check_wf_rty (tau : 't rty) =
   in
   aux tau
 
-let build_wf_ctx (ctx : ('t rty, string) typed list) =
-  let rec aux (over_ctx, under_ctx) ctx =
-    match ctx with
-    | [] -> (over_ctx, under_ctx)
-    | { x; ty = RtyBase { ou = Over; cty } as rty } :: ctx ->
-        let dom = List.map fst over_ctx in
-        if is_close_rty dom rty then
-          aux (over_ctx @ [ (x, cty) ], under_ctx) ctx
-        else _die [%here]
-    | { x; ty = RtyBase { ou = Under; cty } as rty } :: ctx ->
-        let dom = List.map fst over_ctx @ List.map fst under_ctx in
-        _assert [%here]
-          (spf "%s should be closed under %s"
-             (show_rty (fun _ _ -> ()) rty)
-             (StrList.to_string dom))
-          (is_close_rty dom rty);
-        aux (over_ctx, under_ctx @ [ (x, cty) ]) ctx
-    | { x; ty = RtyProd _ } :: _ ->
-        _die_with [%here] (spf "unimp prod type of %s" x)
-    | { x; ty = RtyArr _ as rty } :: ctx ->
-        let dom = List.map fst over_ctx in
-        _assert [%here]
-          (spf "%s should be closed under %s"
-             (show_rty (fun _ _ -> ()) rty)
-             (StrList.to_string dom))
-          (is_close_rty dom rty);
-        aux (over_ctx, under_ctx) ctx
-  in
-  aux ([], []) ctx
-
 let constant_to_value c = (VConst c) #: (Prop.constant_to_nt c)
 let value_to_term v = (CVal v) #: v.ty
 let term_to_value e = match e.x with CVal v -> v.x #: e.ty | _ -> _die [%here]
@@ -172,9 +142,7 @@ let lam_to_fix_comp fixname body =
   value_to_term (lam_to_fix fixname (term_to_value body))
 
 let mk_lete lhs rhs body = (CLetE { lhs; rhs; body }) #: body.ty
-
-let mk_app appf apparg =
-  (CApp { appf; apparg }) #: (snd @@ Nt.destruct_arr_tp appf.ty)
+let mk_app appf apparg = (CApp { appf; apparg }) #: (Nt.get_arr_rhs appf.ty)
 
 let mk_appop op appopargs =
   (CAppOp { op; appopargs }) #: (snd @@ Nt.destruct_arr_tp op.ty)
@@ -226,10 +194,12 @@ let rec mk_rty_tuple = function
 
 let mk_top_cty nty = { nty; phi = Prop.mk_true }
 let mk_bot_cty nty = { nty; phi = Prop.mk_false }
-let mk_top_overrty nty = RtyBase { ou = Over; cty = mk_top_cty nty }
-let mk_bot_overrty nty = RtyBase { ou = Over; cty = mk_bot_cty nty }
-let mk_top_underrty nty = RtyBase { ou = Under; cty = mk_top_cty nty }
-let mk_bot_underrty nty = RtyBase { ou = Under; cty = mk_bot_cty nty }
+let cty_to_overrty cty = RtyBase { ou = Over; cty }
+let cty_to_underrty cty = RtyBase { ou = Under; cty }
+let mk_top_overrty nty = cty_to_overrty @@ mk_top_cty nty
+let mk_bot_overrty nty = cty_to_overrty @@ mk_bot_cty nty
+let mk_top_underrty nty = cty_to_underrty @@ mk_top_cty nty
+let mk_bot_underrty nty = cty_to_underrty @@ mk_bot_cty nty
 
 let mk_unit_underrty phi =
   RtyBase { ou = Under; cty = { nty = Nt.unit_ty; phi } }

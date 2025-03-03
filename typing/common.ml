@@ -6,6 +6,13 @@ open Auxtyping
 
 let _log = Myconfig._log_typing
 
+let mk_self_wf_dec x =
+  let open Prop in
+  if Nt.equal_nt x.ty Nt.int_ty then
+    let lt = "<" #: Nt.(construct_arr_tp ([ int_ty; int_ty ], bool_ty)) in
+    lit_to_prop (AAppOp (lt, List.map tvar_to_lit [ default_v #: x.ty; x ]))
+  else _failatwith [%here] "unimp"
+
 module Rctx = struct
   type rctx = Nt.t rty ctx
 

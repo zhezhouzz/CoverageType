@@ -69,7 +69,7 @@ and bi_term_check (ctx : t ctx) (x : t raw_term) (ty : t) :
       let ty = Nt._type_unify [%here] (Ty_arrow (lamarg.ty, Nt.Ty_any)) ty in
       let lambody =
         bi_typed_term_check (add_to_right ctx lamarg) lambody
-          (snd @@ Nt.destruct_arr_tp ty)
+        @@ Nt.get_arr_rhs ty
       in
       (Lam { lamarg; lambody }) #: ty
   | AppOp (op, args), ty ->
@@ -172,8 +172,7 @@ and bi_term_infer (ctx : t ctx) (x : t raw_term) : (t, t raw_term) typed =
         bi_typed_op_check ctx op
           (Nt.construct_arr_tp (List.map _get_ty args, Nt.Ty_any))
       in
-      let _, ty = Nt.destruct_arr_tp op.ty in
-      (AppOp (op, args)) #: ty
+      (AppOp (op, args)) #: (snd @@ Nt.destruct_arr_tp op.ty)
   | App (f, args) ->
       let f = bi_typed_term_infer ctx f in
       let argsty, ty = Nt.destruct_arr_tp f.ty in

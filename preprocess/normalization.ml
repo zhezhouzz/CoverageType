@@ -14,9 +14,15 @@ let decurry (f, args) =
   let rec aux f = function
     | [] -> f
     | arg :: args ->
-        aux (App (f, [ arg ])) #: (snd @@ Nt.destruct_arr_tp f.ty) args
+        (* let () = *)
+        (*   Printf.printf "decurry: %s: %s\n" (layout_typed_raw_term f) *)
+        (*     (Nt.layout_nt f.ty) *)
+        (* in *)
+        aux (App (f, [ arg ])) #: (Nt.get_arr_rhs f.ty) args
   in
-  aux f args
+  let res = aux f args in
+  (* let () = Printf.printf "decurry: %s\n" (layout_typed_raw_term res) in *)
+  res
 
 let rec normalize_term (tm : ('t, 't raw_term) typed) : ('t, 't term) typed =
   normalize_get_comp (fun x -> x) tm

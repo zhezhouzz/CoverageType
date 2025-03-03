@@ -117,14 +117,15 @@ let non_emptiness_cty builtin_ctx ctx cty =
       "left-hand-side type should be closed under over + under ctx"
       (is_close_cty (List.map fst (overctx @ underctx)) cty)
   in
+  let overctx = (default_v, mk_top_cty cty.nty) :: overctx in
   let query =
     List.fold_right
       (fun (x, { nty; phi }) query ->
-        smart_forall [ x #: nty ] (smart_implies phi query))
+        smart_exists [ x #: nty ] (smart_implies phi query))
       overctx
     @@ List.fold_right
          (fun (x, { nty; phi }) query ->
-           smart_exists [ x #: nty ] (smart_add_to phi query))
+           smart_forall [ x #: nty ] (smart_add_to phi query))
          underctx
     @@ cty.phi
   in
