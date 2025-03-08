@@ -38,12 +38,8 @@ Notation " t1 '⤍' t2" := (TArrow t1 t2) (at level 18, right associativity).
   the result of other operators. *)
 Inductive effop : Type :=
 | op_plus_one
-| op_minus_one
 | op_eq_zero
-| op_rannat
-| op_ranbool
-| op_read
-| op_write.
+| op_rannat.
 
 Global Hint Constructors effop: core.
 
@@ -195,5 +191,5 @@ Notation "'{' x ':=' s '}v' t" := (value_subst x s t) (at level 20).
 Notation "x # s" := (x ∉ stale s) (at level 40).
 
 (* Syntax Suger *)
-Definition mk_app_e_v (e: tm) (v: value) :=
-  tlete e (tletapp (vbvar 0) v (vbvar 0)).
+Definition mk_app (e: tm) (v: tm) :=
+  tlete e (tlete v (tletapp (vbvar 1) (vbvar 0) (vbvar 0))).

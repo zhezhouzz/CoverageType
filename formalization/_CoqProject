@@ -4,14 +4,11 @@ Tactics.v
 CoreLang.v
 NamelessTactics.v
 CoreLangProp.v
-Trace.v
 OperationalSemantics.v
 BasicTyping.v
 BasicTypingProp.v
 Qualifier.v
 ListCtx.v
-Transducer.v
-TransducerProp.v
 RefinementType.v
 RefinementTypeProp.v
 Instantiation.v

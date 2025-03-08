@@ -8,7 +8,6 @@ Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
 Import BasicTyping.
-Import Trace.
 Import OperationalSemantics.
 
 (** This file proves properties of the basic type system. *)
@@ -187,50 +186,55 @@ Qed.
 
 (** * Type properties of syntax sugar *)
 
-Lemma mk_app_e_v_has_type Γ e v T1 T2 :
+Lemma mk_app_has_type Γ e v T1 T2 :
   Γ ⊢t e ⋮t T1 ⤍ T2 ->
-  Γ ⊢t v ⋮v T1 ->
-  Γ ⊢t mk_app_e_v e v ⋮t T2.
+  Γ ⊢t v ⋮t T1 ->
+  Γ ⊢t mk_app e v ⋮t T2.
 Proof.
   intros.
   econstructor; eauto.
+  assert (lc e) by basic_typing_regular_simp.
+  assert (lc v) by basic_typing_regular_simp.
   instantiate_atom_listctx.
-  simpl. econstructor. econstructor. simplify_map_eq. reflexivity.
-  rewrite open_rec_lc_value by eauto using basic_typing_regular_value.
-  apply basic_typing_weaken_insert_value; eauto. my_set_solver.
-  simpl. instantiate_atom_listctx. econstructor. econstructor. simplify_map_eq.
-  reflexivity.
+  simpl. rewrite open_rec_lc_tm; eauto.
+  econstructor. apply basic_typing_weaken_insert_tm; eauto. my_set_solver.
+  auto_exists_L_intros.
+  econstructor. instantiate (1 := T2). instantiate (1 := T1).
+  econstructor. setoid_rewrite lookup_insert_ne. setoid_rewrite lookup_insert. eauto. my_set_solver.
+  econstructor. simplify_map_eq; eauto.
+  auto_exists_L_intros.
+  econstructor. econstructor. simplify_map_eq; eauto.
 Qed.
 
-Lemma mk_app_e_v_has_type_inv Γ e v T2 :
-  Γ ⊢t mk_app_e_v e v ⋮t T2 ->
+Lemma mk_app_has_type_inv Γ e v T2 :
+  Γ ⊢t mk_app e v ⋮t T2 ->
   lc v ->
-  exists T1, Γ ⊢t e ⋮t T1 ⤍ T2 /\ Γ ⊢t v ⋮v T1.
+  exists T1, Γ ⊢t e ⋮t T1 ⤍ T2 /\ Γ ⊢t v ⋮t T1.
 Proof.
   intros.
-  sinvert H.
-  simpl in H6.
-  auto_pose_fv x. repeat specialize_with x.
-  rewrite open_rec_lc_value in H6 by auto.
-  sinvert H6. simpl in H10.
-  auto_pose_fv y. repeat specialize_with y.
-  sinvert H7. setoid_rewrite lookup_insert in H5. simplify_eq.
-  sinvert H10. sinvert H5. setoid_rewrite lookup_insert in H6. simplify_eq.
-  repeat esplit; eauto.
-  eapply basic_typing_strengthen_value; eauto. my_set_solver.
+  sinvert H. simpl in H6. auto_pose_fv x. repeat specialize_with x.
+  rewrite open_rec_lc_tm in H6 by auto.
+  sinvert H6. remember x. auto_pose_fv y. repeat specialize_with y.
+  sinvert H8. simpl in H12. auto_pose_fv z. repeat specialize_with z. subst.
+  sinvert H12. sinvert H7. setoid_rewrite lookup_insert in H8. simplify_eq.
+  sinvert H11. setoid_rewrite lookup_insert in H7. simplify_eq.
+  sinvert H9. setoid_rewrite lookup_insert_ne in H7. setoid_rewrite lookup_insert in H7. simplify_eq.
+  exists T3. intuition; eauto.
+  eapply basic_typing_strengthen_tm; eauto.
+  all: my_set_solver.
 Qed.
 
 (** * Type preservation *)
 
-Lemma tr_reduction_sound α β op c1 c :
-  α⊧{op~c1}⇓{β}{c} ->
+Lemma tr_reduction_sound op c1 c :
+  ⇓{op~c1}{c} ->
   ty_of_const c = ret_ty_of_op op.
 Proof.
   induction 1; eauto.
 Qed.
 
 (** perservation *)
-Lemma preservation: forall α β Γ T (e e': tm),α ⊧ e ↪{ β } e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
+Lemma preservation: forall Γ T (e e': tm), e ↪ e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
 Proof.
   intros * Hstep HT. move HT at top. revert_all.
   induction 1; intros; sinvert Hstep; eauto.
@@ -254,17 +258,15 @@ Proof.
 Qed.
 
 (** multi preservation *)
-Lemma multi_preservation: forall α β Γ T (e e': tm),α ⊧ e ↪*{ β } e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
+Lemma multi_preservation: forall Γ T (e e': tm),e ↪* e' -> Γ ⊢t e ⋮t T -> Γ ⊢t e' ⋮t T.
 Proof.
   induction 1; eauto using preservation.
 Qed.
 
 Ltac pure_multistep_tac :=
   match goal with
-  | [H: _ |- ?α ⊧ (treturn ?v) ↪*{ ?α} (treturn _) ] =>
+  | [H: _ |- (treturn ?v) ↪* (treturn _) ] =>
       apply (value_reduction_any_ctx v); eauto
-  | [H: _ |- forall _, _ ⊧ (treturn ?v) ↪*{ _} (treturn _) ] =>
-      intros; apply (value_reduction_any_ctx v); eauto
   end; basic_typing_regular_simp.
 
 Ltac unique_basic_type :=

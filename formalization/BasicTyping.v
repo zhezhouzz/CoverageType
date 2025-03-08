@@ -17,12 +17,8 @@ Definition ty_of_const (c: constant): base_ty :=
 Definition ret_ty_of_op (op: effop): base_ty :=
   match op with
   | op_plus_one => TNat
-  | op_minus_one => TNat
   | op_eq_zero => TBool
   | op_rannat => TNat
-  | op_ranbool => TBool
-  | op_read => TNat
-  | op_write => TBool
   end.
 
 Definition ty_of_op (op: effop): ty := TNat ⤍ (ret_ty_of_op op).
@@ -116,18 +112,6 @@ Proof.
   all: destruct 1; simpl;
     try econstructor; try instantiate_atom_listctx; eauto.
 Qed.
-
-(* Ltac basic_typing_regular_simp := *)
-(*   repeat match goal with *)
-(*     | [H: _ ⊢t ?e ⋮t _ |- lc ?e] => *)
-(*         apply basic_typing_regular_tm in H; auto *)
-(*     | [H: _ ⊢t ?v ⋮v _ |- lc (treturn ?v)] => *)
-(*         apply basic_typing_regular_value in H; auto *)
-(*     | [H: _ ⊢t _ ⋮v _ |- lc _] => apply basic_typing_regular_value in H; destruct H; auto *)
-(*     | [H: _ ⊢t _ ⋮t _ |- lc _] => apply basic_typing_regular_tm in H; destruct H; auto *)
-(*     | [H: _ ⊢t _ ⋮v _ |- body _] => apply basic_typing_regular_value in H; destruct H; auto *)
-(*     | [H: _ ⊢t _ ⋮t _ |- body _] => apply basic_typing_regular_tm in H; destruct H; auto *)
-(*     end. *)
 
 Ltac lc_basic_typing_simp_aux :=
   match goal with

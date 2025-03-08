@@ -5,7 +5,6 @@ From CT Require Import OperationalSemantics.
 From CT Require Import BasicTypingProp.
 From CT Require Import Qualifier.
 From CT Require Import ListCtx.
-From CT Require Import TransducerProp.
 From CT Require Import RefinementType.
 
 Import Atom.
@@ -17,7 +16,6 @@ Import BasicTyping.
 Import Qualifier.
 Import ListCtx.
 Import List.
-Import Transducer.
 Import RefinementType.
 
 (** * Naming properties of refinement type syntax *)
@@ -88,64 +86,13 @@ Lemma subst_commute_rty : forall x u_x y u_y τ,
     {x := u_x }r ({y := u_y }r τ) = {y := u_y }r ({x := u_x }r τ).
 Proof.
   induction τ; simpl; intros; f_equal;
-    eauto using subst_commute_qualifier, subst_commute_td.
-Qed.
-
-Lemma subst_pure_rty_l: forall (τ: rty) (x:atom) (u: value),
-    pure_rty τ -> pure_rty ({x := u}r τ).
-Proof.
-  induction τ; intros; simpl in *; eauto.
-Qed.
-
-Lemma subst_pure_rty_r: forall (τ: rty) (x:atom) (u: value),
-    pure_rty ({x := u}r τ) -> pure_rty τ.
-Proof.
-  induction τ; intros; simpl in *; eauto.
-Qed.
-
-Lemma subst_pure_rty: forall (τ: rty) (x:atom) (u: value),
-    pure_rty ({x := u}r τ) <-> pure_rty τ.
-Proof.
-  split. apply subst_pure_rty_r. apply subst_pure_rty_l.
-Qed.
-
-Ltac rty_simp :=
-  (repeat match goal with
-     | [H: _ |- is_tm_rty (({ _ := _ }r) _) ] =>
-         rewrite is_tm_rty_subst
-     | [H: is_tm_rty (({ _ := _ }r) _) |- is_tm_rty _ ] =>
-         rewrite is_tm_rty_subst in H
-     | [H: _ |- tdable_rty (({ _ := _ }r) _) ] =>
-         rewrite tdable_rty_subst
-     | [H: tdable_rty (({ _ := _ }r) _) |- tdable_rty _ ] =>
-         rewrite tdable_rty_subst in H
-     end); eauto.
-
-Lemma subst_fine_rty_l: forall (τ: rty) (x:atom) (u: value),
-    fine_rty τ -> fine_rty ({x := u}r τ).
-Proof.
-  pose subst_pure_rty_l.
-  induction τ; intros; simpl in *; eauto; intuition; rty_simp.
-Qed.
-
-Lemma subst_fine_rty_r: forall (τ: rty) (x:atom) (u: value),
-    fine_rty ({x := u}r τ) -> fine_rty τ.
-Proof.
-  pose subst_pure_rty_r.
-  induction τ; intros; simpl in *; eauto; intuition; rty_simp.
-Qed.
-
-Lemma subst_fine_rty: forall (τ: rty) (x:atom) (u: value),
-    fine_rty ({x := u}r τ) <-> fine_rty τ.
-Proof.
-  split. apply subst_fine_rty_r. apply subst_fine_rty_l.
+    eauto using subst_commute_qualifier.
 Qed.
 
 Lemma subst_fresh_rty: forall (τ: rty) (x:atom) (u: value),
     x # τ -> {x := u}r τ = τ.
 Proof.
   pose subst_fresh_qualifier.
-  pose subst_fresh_td.
   induction τ; simpl; intros; f_equal; eauto;
     solve [ auto_apply; my_set_solver
           | apply subst_fresh_am; my_set_solver ].
@@ -156,16 +103,14 @@ Lemma open_fv_rty (τ : rty) (v : value) k :
 Proof.
   all: revert k.
   induction τ; simpl; intros; eauto using open_fv_qualifier.
-  etrans. repeat apply union_mono; eauto using open_fv_td.
-  my_set_solver.
-  etrans. repeat apply union_mono; eauto using open_fv_td.
+  etrans. repeat apply union_mono; eauto.
   my_set_solver.
 Qed.
 
 Lemma open_fv_rty' (τ : rty) (v : value) k :
   rty_fv τ ⊆ rty_fv ({k ~r> v} τ).
 Proof.
-  pose open_fv_qualifier'. pose open_fv_td'.
+  pose open_fv_qualifier'.
   all: revert k.
   induction τ; simpl; intros; eauto using open_fv_qualifier';
     repeat apply union_mono; eauto.
@@ -176,7 +121,6 @@ Lemma open_subst_same_rty: forall x y (τ : rty) k,
     {x := y }r ({k ~r> x} τ) = {k ~r> y} τ.
 Proof.
   pose open_subst_same_qualifier.
-  pose open_subst_same_td.
   induction τ; simpl; intros; f_equal; eauto;
     auto_apply; my_set_solver.
 Qed.
@@ -185,7 +129,6 @@ Lemma subst_open_rty: forall (τ: rty) (x:atom) (u: value) (w: value) (k: nat),
     lc w -> {x := w}r ({k ~r> u} τ) = ({k ~r> {x := w}v u} ({x := w}r τ)).
 Proof.
   pose subst_open_qualifier.
-  pose subst_open_td.
   induction τ; simpl; intros; f_equal; eauto.
 Qed.
 
@@ -212,10 +155,6 @@ Ltac solve_fine_rty :=
       destruct ρ; simpl in *; eauto; intuition
   | [ _ : _ |- fine_rty _ ] =>
       simpl in *;
-      pose subst_pure_rty_l;
-      pose subst_pure_rty_r;
-      pose subst_fine_rty_l;
-      pose subst_fine_rty_r;
       intuition; eauto
   end.
 
@@ -223,18 +162,12 @@ Lemma subst_lc_rty : forall x (u: value) (τ: rty),
     lc_rty τ -> lc u -> lc_rty ({x := u}r τ).
 Proof.
   pose subst_lc_phi1.
-  pose subst_lc_td.
-  pose subst_pure_rty_l.
-  pose subst_fine_rty_l.
   all: induction 1; intros; simpl in *.
   - econstructor; simpl; eauto.
   - auto_exists_L.
   - auto_exists_L; intros. rewrite <- subst_open_var_rty; eauto.
     auto_apply; eauto. my_set_solver. my_set_solver.
-    simpl. intuition. rty_simp.
-  - auto_exists_L; intros. rewrite <- subst_open_var_td; eauto.
-    auto_apply; eauto. my_set_solver. my_set_solver.
-    solve_fine_rty.
+    simpl. intuition. fine_rty_simp_aux. fine_rty_solver.
 Qed.
 
 Lemma fv_of_subst_rty_closed:
@@ -250,11 +183,9 @@ Lemma open_not_in_eq_rty (x : atom) (τ : rty) k :
   x # {k ~r> x} τ ->
   forall e, τ = {k ~r> e} τ.
 Proof.
-  pose open_not_in_eq_td.
   pose open_not_in_eq_qualifier.
   generalize k; induction τ; intros; simpl in *; f_equal; eauto;
     try (auto_apply; my_set_solver).
-  apply open_not_in_eq_td with (x:=x). my_set_solver.
 Qed.
 
 Lemma subst_intro_rty: forall (ρ: rty) (x:atom) (w: value) (k: nat),
@@ -272,10 +203,7 @@ Lemma lc_subst_rty: forall x (u: value) (τ: rty), lc_rty ({x := u}r τ) -> lc u
 Proof.
   pose lc_subst_phi1.
   pose lc_subst_phi2.
-  pose lc_subst_td.
   pose lc_rty_fine.
-  pose subst_pure_rty_r.
-  pose subst_fine_rty_r.
   intros.
   remember (({x:=u}r) τ).
   generalize dependent τ.
@@ -287,11 +215,7 @@ Proof.
     auto_exists_L.
     intros. repeat specialize_with x0.
     apply H1.
-    rewrite <- subst_open_var_rty; eauto. my_set_solver.
-  - intros τ1 **; destruct τ1; inversion Heqr; simpl; subst.
-    rewrite lc_rty_td. repeat fine_rty_simp_aux. intuition.
-    auto_exists_L. intros. specialize_with x0.
-    rewrite <- subst_open_var_td in * by (eauto; my_set_solver); eauto.
+    rewrite <- subst_open_var_rty; eauto. my_set_solver. fine_rty_solver.
 Qed.
 
 Lemma open_rty_idemp: forall u (v: value)  (τ: rty) (k: nat),
@@ -299,7 +223,6 @@ Lemma open_rty_idemp: forall u (v: value)  (τ: rty) (k: nat),
     {k ~r> u} ({k ~r> v} τ) = {k ~r> v} τ.
 Proof.
   pose open_qualifier_idemp.
-  pose open_td_idemp.
   induction τ; intros; simpl; f_equal; eauto.
 Qed.
 
@@ -317,21 +240,17 @@ Lemma fact1_rty: forall (u v: value) (A: rty) i j,
 Proof.
   pose fact1_value.
   pose fact1_qualifier.
-  pose fact1_td.
   intros u v. induction A; simpl; intros; eauto; f_equal; simp_hyps; eauto.
 Qed.
 
 Lemma open_rec_lc_rty: ∀ (u : value) τ (k : nat), lc_rty τ -> {k ~r> u} τ = τ.
 Proof.
   pose open_rec_lc_phi1.
-  pose open_rec_lc_td.
   intros. generalize dependent k.
   induction H; simpl; intros; auto; f_equal; eauto;
     try (rewrite open_rec_lc_value; eauto).
   - auto_pose_fv x. apply fact1_rty with (j := 0) (v := x); eauto.
     rewrite H0; eauto. my_set_solver.
-  - auto_pose_fv x. apply fact1_td with (j := 0) (v := x); eauto.
-    apply open_rec_lc_td; my_set_solver.
 Qed.
 
 Lemma body_rty_open_lc: forall (v: value) τ,
@@ -343,20 +262,6 @@ Proof.
   apply subst_lc_rty; eauto.
   apply H0.
   all: my_set_solver.
-Qed.
-
-Lemma ex_phi_to_td_open τ A k v:
-  tdable_rty τ -> {k ~a> v} (ex_phi_to_td τ A) = (ex_phi_to_td ({k ~r> v} τ) ({S k ~a> v} A)).
-Proof.
-  destruct τ; simpl; intros; intuition.
-  + repeat rewrite <- rty_erase_open_eq; eauto.
-Qed.
-
-Lemma ex_phi_to_td_subst τ A x v:
-  tdable_rty τ -> {x:=v}a (ex_phi_to_td τ A) = (ex_phi_to_td ({x:=v}r τ) ({x:=v}a A)).
-Proof.
-  destruct τ; simpl; intros; intuition.
-  + repeat rewrite <- rty_erase_subst_eq; eauto.
 Qed.
 
 Lemma flip_rty_open τ k v: {k ~r> v} (flip_rty τ) = flip_rty ({k ~r> v} τ).

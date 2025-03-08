@@ -505,3 +505,117 @@ Inductive closed_qualifier1 (L: aset) (ϕ: qualifier): Prop :=
 
 Inductive closed_qualifier2 (L: aset) (ϕ: qualifier): Prop :=
 | closed_phi2: qualifier_fv ϕ ⊆ L -> lc_phi2 ϕ -> closed_qualifier2 L ϕ.
+
+Lemma lc_phi1_body: ∀ n vals prop,
+    lc_phi1 (@qual n vals prop) -> Vector.Forall (fun v => body (treturn v)) vals.
+Proof.
+  intros. subst. sinvert H.
+  rewrite Vector.Forall_forall. intros.
+  auto_exists_L. intros.
+  ospecialize * (H0 x0). my_set_solver.
+  sinvert H0.
+  apply Classical_Prop.EqdepTheory.inj_pair2 in H4.
+  apply Classical_Prop.EqdepTheory.inj_pair2 in H5.
+  subst.
+  rewrite VectorSpec.Forall_map in H3.
+  rewrite Vector.Forall_forall in H3. eauto.
+Qed.
+
+Lemma lc_phi2_body: ∀ n vals prop,
+    lc_phi2 (@qual n vals prop) ->
+    Vector.Forall (fun v =>
+                     exists (L : aset), (forall (x : atom), x ∉ L -> forall (y : atom), y ∉ L -> lc ({0 ~v> y} ({1 ~v> x} v)))) vals.
+Proof.
+  intros. subst. sinvert H.
+  rewrite Vector.Forall_forall. intros.
+  auto_exists_L. intros.
+  ospecialize * (H0 x0 _ y). my_set_solver. my_set_solver.
+  sinvert H0.
+  apply Classical_Prop.EqdepTheory.inj_pair2 in H5.
+  apply Classical_Prop.EqdepTheory.inj_pair2 in H6.
+  subst.
+  repeat rewrite VectorSpec.Forall_map in H4.
+  rewrite Vector.Forall_forall in H4. eauto.
+Qed.
+
+(* NOTE: Very very annoying, a reverse version of map_ext, using classical logic *)
+Lemma vector_map_ext_in' {A B: Type} (f g: A -> B) {n: nat} (vec: vec A n):
+  vmap f vec = vmap g vec -> (forall x, @Vector.In A x n vec -> f x = g x).
+Proof.
+  induction vec; simpl; intros.
+  - inversion H0.
+  - sinvert H.
+    apply Classical_Prop.EqdepTheory.inj_pair2 in H3.
+    sinvert H0; eauto.
+    apply Classical_Prop.EqdepTheory.inj_pair2 in H5. subst.
+    eapply IHvec in H3; eauto.
+Qed.
+
+Lemma fact1_value_twice: forall (u v1 v2: value) (e: value) i j1 j2,
+    i <> j1 -> i <> j2 -> j1 <> j2 ->
+    {i ~v> u} ({j1 ~v> v1} ({j2 ~v> v2} e)) = {j1 ~v> v1} ({j2 ~v> v2} e) -> {i ~v> u} e = e.
+Proof.
+  intros.
+  assert ({i ~v> u} ({j2 ~v> v2} e) = {j2 ~v> v2} e).
+  apply fact1_value with (j := j1) (v:= v1); eauto.
+  apply fact1_value with (j := j2) (v:= v2); eauto.
+Qed.
+
+Lemma fact1_qualifier: forall (u v: value) (ϕ: qualifier) i j,
+    i <> j -> {i ~q> u} ({j ~q> v} ϕ) = {j ~q> v} ϕ -> {i ~q> u} ϕ = ϕ.
+Proof.
+  intros.
+  destruct ϕ. simpl. f_equal.
+  rewrite <- Vector.map_id.
+  apply Vector.map_ext_in.
+  simpl in H0. sinvert H0.
+  apply Classical_Prop.EqdepTheory.inj_pair2 in H2.
+  rewrite Vector.map_map in H2.
+  intros.
+  eapply vector_map_ext_in' in H2; eauto.
+  pose fact1_value; eauto.
+Qed.
+
+Lemma fact1_qualifier_twice: forall (u v1 v2: value) (ϕ: qualifier) i j1 j2,
+    i <> j1 -> i <> j2 -> j1 <> j2 ->
+    {i ~q> u} ({j1 ~q> v1} ({j2 ~q> v2} ϕ)) = {j1 ~q> v1} ({j2 ~q> v2} ϕ) -> {i ~q> u} ϕ = ϕ.
+Proof.
+  intros.
+  assert ({i ~q> u} ({j2 ~q> v2} ϕ) = {j2 ~q> v2} ϕ).
+  apply fact1_qualifier with (j := j1) (v:= v1); eauto.
+  apply fact1_qualifier with (j := j2) (v:= v2); eauto.
+Qed.
+
+Lemma open_rec_lc_phi1: ∀ (u : value) ϕ (k : nat), lc_phi1 ϕ -> {S k ~q> u} ϕ = ϕ.
+Proof.
+  intros. destruct ϕ. apply lc_phi1_body in H.
+  simpl. f_equal.
+  rewrite <- Vector.map_id.
+  apply Vector.map_ext_in.
+  intros.
+  rewrite Vector.Forall_forall in H.
+  ospecialize * H; eauto.
+  destruct H.
+  auto_pose_fv y.
+  apply fact1_value with (j := 0) (v:= y). lia.
+  rewrite open_rec_lc_value; eauto. apply H. my_set_solver.
+Qed.
+
+(* NOTE: Very very annoying, when qualifier has builtin 1 or 2 arguments. *)
+Lemma open_rec_lc_phi2: ∀ (u : value) ϕ (k : nat), lc_phi2 ϕ -> {S (S k) ~q> u} ϕ = ϕ.
+Proof.
+  intros. destruct ϕ. apply lc_phi2_body in H.
+  simpl. f_equal.
+  rewrite <- Vector.map_id.
+  apply Vector.map_ext_in.
+  intros.
+  rewrite Vector.Forall_forall in H.
+  ospecialize * H; eauto.
+  destruct H.
+  auto_pose_fv y1. auto_pose_fv y2.
+  ospecialize * (H y1 _ y2); eauto. my_set_solver. my_set_solver.
+  eapply (fact1_value_twice _ y1 y2 _ _ 0 1); eauto.
+  rewrite open_rec_lc_value; eauto.
+Qed.
+
+Notation "'⟦' ϕ '⟧q' " := (denote_qualifier ϕ) (at level 20, format "⟦ ϕ ⟧q", ϕ constr).

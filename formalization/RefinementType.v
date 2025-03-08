@@ -1,3 +1,4 @@
+Require Import Coq.Program.Wf.
 From stdpp Require Import mapset.
 From stdpp Require Import natmap.
 From CT Require Import CoreLangProp.
@@ -5,7 +6,6 @@ From CT Require Import OperationalSemantics.
 From CT Require Import BasicTypingProp.
 From CT Require Import Qualifier.
 From CT Require Import ListCtx.
-From CT Require Import Transducer.
 
 Import Atom.
 Import CoreLang.
@@ -16,64 +16,65 @@ Import BasicTyping.
 Import Qualifier.
 Import ListCtx.
 Import List.
-Import Transducer.
 
 (** Refinement types (t in Fig. 4) *)
 Inductive rty : Type :=
 | rtyOver (b: base_ty) (ϕ: qualifier)
 | rtyUnder (b: base_ty) (ϕ: qualifier)
-| rtyArr (ρ: rty) (τ: rty)
-| rtyTd (ρ: rty) (τ: transducer).
+| rtyArr (ρ: rty) (τ: rty).
+
+Global Hint Constructors rty: core.
 
 Notation "'{:' b '|' ϕ '}'" := (rtyOver b ϕ) (at level 5, format "{: b | ϕ }", b constr, ϕ constr).
 Notation "'[:' b '|' ϕ ']' " := (rtyUnder b ϕ) (at level 5, format "[: b | ϕ ]", b constr, ϕ constr).
 Notation "ρ '⇨' τ" :=
   (rtyArr ρ τ) (at level 80, format "ρ ⇨ τ", right associativity, ρ constr, τ constr).
-Notation "ρ '!<[' a ']>'" :=
-  (rtyTd ρ a) (at level 80, format "ρ !<[ a ]>", right associativity, ρ constr, a constr).
 
-(** Over-Base type and function type is *pure*, which means it can be paramater of a function type; also can be introduced into type context *)
-Definition pure_rty (τ: rty) :=
+(* NOTE: \rightwhitearrow: ⇨ *)
+
+Definition is_under_base_rty (τ: rty) :=
   match τ with
-  | {: _ | _ } | _ ⇨ _  => True
-  | [: _ | _ ] | _ !<[ _ ]> => False
+  | [: _ | _ ] => False
+  | _ => True
   end.
 
-(** Under-Base type and function type is td-able, which means it can be refined with a transducer. *)
-Definition tdable_rty (τ: rty) :=
+Definition is_over_base_rty (τ: rty) :=
   match τ with
-  | [: _ | _ ] | _ ⇨ _  => True
-  | {: _ | _ } | _ !<[ _ ]> => False
-  end.
-
-Definition is_tm_rty (τ: rty) :=
-  match τ with
-  | [: _ | _] | _ !<[ _ ]> | _ ⇨ _ => True
   | {: _ | _ } => False
+  | _ => True
   end.
 
-(** Fine-defined Refinement type:
-    - { b | ϕ }
-    - (τ1 ⇨ τ2) where τ1 and τ2 is fine-defined, τ1 is pure
-    - [ b | ϕ ] ! T
-    - (τ1 ⇨ τ2) ! T where τ1 and τ2 is fine-defined, τ1 is pure
- *)
-Fixpoint fine_rty (τ: rty) :=
+(* This measure function is used to guarantee termination of the denotation.
+Instead of addtion, we can also use [max] for the subterms. *)
+Fixpoint rty_measure (ρ: rty) : nat :=
+  match ρ with
+  | rtyOver _ _ | rtyUnder _ _ => 1
+  | ρ ⇨ τ => 1 + rty_measure ρ + rty_measure τ
+  end.
+
+Inductive is_coverage_rty: rty -> Prop :=
+| is_coverage_rty_base: forall b ϕ, is_coverage_rty [:b|ϕ]
+| is_coverage_rty_over_arr: forall b ϕ τ,
+    is_coverage_rty τ -> is_coverage_rty ({:b|ϕ} ⇨ τ)
+| is_coverage_rty_under_arr: forall b ϕ τ,
+    is_coverage_rty τ -> is_coverage_rty ([:b|ϕ] ⇨ τ)
+| is_coverage_rty_arr_arr: forall ρ1 ρ2 τ,
+    is_coverage_rty (ρ1 ⇨ ρ2) -> is_coverage_rty τ -> is_coverage_rty ((ρ1 ⇨ ρ2) ⇨ τ).
+
+Global Hint Constructors is_coverage_rty: core.
+
+Definition fine_rty (τ: rty) :=
   match τ with
-  | rtyOver _ _ => True
-  | rtyUnder _ _ => True
-  | rtyArr ρ τ => pure_rty ρ /\ fine_rty ρ /\ fine_rty τ /\ is_tm_rty τ
-  | rtyTd ρ _ => tdable_rty ρ /\ fine_rty ρ
+  | {: _ | _ } => True
+  | [: _ | _ ] => True
+  | _ => is_coverage_rty τ
   end.
-
-Global Hint Constructors rty: core.
 
 Definition flip_rty (τ: rty) :=
   match τ with
   | [: b | ϕ ] => {: b | ϕ }
   | {: b | ϕ } => [: b | ϕ ]
   | ρ ⇨ τ => ρ ⇨ τ
-  | ρ !<[ a ]> => ρ !<[ a ]>
   end.
 
 (** Type erasure (Fig. 5) *)
@@ -83,7 +84,6 @@ Fixpoint rty_erase ρ : ty :=
   | {: b | ϕ } => b
   | [: b | ϕ ] => b
   | ρ ⇨ τ => (rty_erase ρ) ⤍ (rty_erase τ)
-  | ρ !<[ _ ]> => (rty_erase ρ)
   end.
 
 Notation " '⌊' ty '⌋' " := (rty_erase ty) (at level 5, format "⌊ ty ⌋", ty constr).
@@ -93,13 +93,6 @@ Definition ctx_erase (Γ: listctx rty) :=
 
 Notation " '⌊' Γ '⌋*' " := (ctx_erase Γ) (at level 5, format "⌊ Γ ⌋*", Γ constr).
 
-Definition ex_phi_to_td (τ: rty) A :=
-  match τ with
-  | {: _ | _ } | _ !<[ _ ]> => A
-  | [: b | ϕ ] => tdEx b ϕ A
-  | ρ ⇨ τ => tdExArr ⌊ ρ ⌋ ⌊ τ ⌋ A
-  end.
-
 (** * Naming related definitions *)
 
 Fixpoint rty_fv ρ : aset :=
@@ -107,7 +100,6 @@ Fixpoint rty_fv ρ : aset :=
   | {: _ | ϕ } => qualifier_fv ϕ
   | [: _ | ϕ ] => qualifier_fv ϕ
   | ρ ⇨ τ => rty_fv ρ ∪ rty_fv τ
-  | ρ !<[ a ]> => rty_fv ρ ∪ td_fv a
   end.
 
 #[global]
@@ -119,7 +111,6 @@ Fixpoint rty_open (k: nat) (s: value) (ρ: rty) : rty :=
   | {: b | ϕ } => {: b | qualifier_open (S k) s ϕ }
   | [: b | ϕ ] => [: b | qualifier_open (S k) s ϕ ]
   | ρ ⇨ τ => (rty_open k s ρ) ⇨ (rty_open (S k) s τ)
-  | ρ !<[ a ]> => (rty_open k s ρ) !<[ td_open (S k) s a ]>
   end.
 
 Notation "'{' k '~r>' s '}' e" := (rty_open k s e) (at level 20, k constr).
@@ -130,7 +121,6 @@ Fixpoint rty_subst (k: atom) (s: value) (ρ: rty) : rty :=
   | {: b | ϕ} => {: b | qualifier_subst k s ϕ}
   | [: b | ϕ] => [: b | qualifier_subst k s ϕ]
   | ρ ⇨ τ => (rty_subst k s ρ) ⇨ (rty_subst k s τ)
-  | ρ !<[ a ]> => (rty_subst k s ρ) !<[ td_subst k s a ]>
   end.
 
 Notation "'{' x ':=' s '}r'" := (rty_subst x s) (at level 20, format "{ x := s }r", x constr).
@@ -144,11 +134,7 @@ Inductive lc_rty : rty -> Prop :=
 | lc_rtyArr: forall ρ τ (L : aset),
     (forall x : atom, x ∉ L -> lc_rty (τ ^r^ x)) ->
     fine_rty (ρ ⇨ τ) -> lc_rty ρ ->
-    lc_rty (ρ ⇨ τ)
-| lc_rtyTd: forall ρ a (L : aset),
-    (forall x : atom, x ∉ L -> lc_td (a ^a^ x)) ->
-    fine_rty (ρ!<[a]>) -> lc_rty ρ ->
-    lc_rty (ρ!<[a]>).
+    lc_rty (ρ ⇨ τ).
 
 Lemma lc_rty_fine: forall τ, lc_rty τ -> fine_rty τ.
 Proof.
@@ -176,7 +162,6 @@ Inductive ok_ctx: listctx rty -> Prop :=
 | ok_ctx_nil: ok_ctx []
 | ok_ctx_cons: forall (Γ: listctx rty)(x: atom) (ρ: rty),
     ok_ctx Γ ->
-    pure_rty ρ ->
     closed_rty (ctxdom Γ) ρ ->
     x ∉ ctxdom Γ ->
     ok_ctx (Γ ++ [(x, ρ)]).
@@ -186,88 +171,144 @@ Proof.
   induction 1; eauto.
 Qed.
 
-Lemma pure_rty_open: forall τ k (v_x: value), pure_rty ({ k ~r> v_x} τ) <-> pure_rty τ.
+Lemma is_over_base_rty_open: forall τ k (v_x: value), is_over_base_rty ({ k ~r> v_x} τ) <-> is_over_base_rty τ.
 Proof.
   split; induction τ; simpl; intros; inversion H; subst; eauto.
 Qed.
 
-Lemma pure_rty_subst: forall τ x (v_x: value), pure_rty ({ x := v_x}r τ) <-> pure_rty τ.
+Lemma is_over_base_rty_subst: forall τ x (v_x: value), is_over_base_rty ({ x := v_x}r τ) <-> is_over_base_rty τ.
 Proof.
   split; induction τ; simpl; intros; inversion H; subst; eauto.
 Qed.
 
-Lemma tdable_rty_open: forall τ k (v_x: value), tdable_rty ({ k ~r> v_x} τ) <-> tdable_rty τ.
+Lemma is_under_base_rty_open: forall τ k (v_x: value), is_under_base_rty ({ k ~r> v_x} τ) <-> is_under_base_rty τ.
 Proof.
   split; induction τ; simpl; intros; inversion H; subst; eauto.
 Qed.
 
-Lemma tdable_rty_subst: forall τ x (v_x: value), tdable_rty ({ x := v_x}r τ) <-> tdable_rty τ.
+Lemma is_under_base_rty_subst: forall τ x (v_x: value), is_under_base_rty ({ x := v_x}r τ) <-> is_under_base_rty τ.
 Proof.
   split; induction τ; simpl; intros; inversion H; subst; eauto.
 Qed.
 
-Lemma is_tm_rty_open: forall τ k (v_x: value), is_tm_rty ({ k ~r> v_x} τ) <-> is_tm_rty τ.
+Lemma rty_measure_gt_0 ρ : rty_measure ρ > 0.
 Proof.
-  split; induction τ; simpl; intros; inversion H; subst; eauto.
+  induction ρ; simpl; lia.
 Qed.
 
-Lemma is_tm_rty_subst: forall τ x (v_x: value), is_tm_rty ({ x := v_x}r τ) <-> is_tm_rty τ.
+Lemma rty_measure_S ρ : exists n, rty_measure ρ = S n.
 Proof.
-  split; induction τ; simpl; intros; inversion H; subst; eauto.
+  destruct (Nat.lt_exists_pred 0 (rty_measure ρ)).
+  pose proof (rty_measure_gt_0 ρ). lia.
+  intuition eauto.
 Qed.
+
+Lemma open_preserves_rty_measure ρ: forall k t,
+    rty_measure ρ = rty_measure ({k ~r> t} ρ).
+Proof.
+  induction ρ; simpl; eauto.
+Qed.
+
+Lemma subst_preserves_rty_measure ρ: forall x t,
+    rty_measure ρ = rty_measure ({x:=t}r ρ).
+Proof.
+  induction ρ; simpl; eauto.
+Qed.
+
+Lemma is_coverage_rty_open_aux n: forall τ, rty_measure τ <= n -> forall k (v_x: value), is_coverage_rty ({ k ~r> v_x} τ) <-> is_coverage_rty τ.
+Proof.
+  induction n; split; intros HH.
+  - destruct τ; sinvert H.
+  - destruct τ; sinvert H.
+  - destruct τ.
+    + sinvert HH; eauto.
+    + sinvert HH; eauto.
+    + destruct τ1; sinvert HH; eauto; econstructor; rewrite <- IHn; eauto; simpl in *; lia.
+  - destruct τ.
+    + sinvert HH; eauto.
+    + simpl. eauto.
+    + destruct τ1; sinvert HH; eauto; simpl; econstructor; try solve [rewrite IHn; eauto; simpl in *; lia].
+      * rewrite <- IHn in H2; eauto; simpl in *; lia.
+Qed.
+
+Lemma is_coverage_rty_open: forall τ, forall k (v_x: value), is_coverage_rty ({ k ~r> v_x} τ) <-> is_coverage_rty τ.
+Proof. eauto using is_coverage_rty_open_aux. Qed.
+
+Lemma is_coverage_rty_subst_aux n: forall τ, rty_measure τ <= n -> forall x (v_x: value), is_coverage_rty ({ x := v_x}r τ) <-> is_coverage_rty τ.
+Proof.
+  induction n; split; intros HH.
+  - destruct τ; sinvert H.
+  - destruct τ; sinvert H.
+  - destruct τ.
+    + sinvert HH; eauto.
+    + sinvert HH; eauto.
+    + destruct τ1; sinvert HH; eauto; econstructor; rewrite <- IHn; eauto; simpl in *; lia.
+  - destruct τ.
+    + sinvert HH; eauto.
+    + simpl. eauto.
+    + destruct τ1; sinvert HH; eauto; simpl; econstructor; try solve [rewrite IHn; eauto; simpl in *; lia].
+      * rewrite <- IHn in H2; eauto; simpl in *; lia.
+Qed.
+
+Lemma is_coverage_rty_subst: forall τ x (v_x: value), is_coverage_rty ({ x := v_x}r τ) <-> is_coverage_rty τ.
+Proof. eauto using is_coverage_rty_subst_aux. Qed.
+
+Lemma rty_open_arr_rev: forall ρ τ k v, (({k ~r> v} ρ) ⇨ ({S k ~r> v} τ)) = {k ~r> v} (ρ ⇨ τ).
+Proof. eauto. Qed.
+
+Lemma rty_subst_arr_rev: forall ρ τ x v, (({x := v}r ρ) ⇨ ({x := v}r τ)) = {x := v}r (ρ ⇨ τ).
+Proof. eauto. Qed.
 
 Ltac fine_rty_aux_simp_aux :=
   match goal with
-  | [H: context [ tdable_rty ({_ ~r> _} ?τ) ] |- _ ] => setoid_rewrite tdable_rty_open in H
-  | [H: context [ tdable_rty ({_ := _}r ?τ) ] |- _ ] => setoid_rewrite tdable_rty_subst in H
-  | [H: _ |- context [ tdable_rty ({_ ~r> _} ?τ) ] ] => setoid_rewrite tdable_rty_open
-  | [H: _ |- context [ tdable_rty ({_ := _}r ?τ) ] ] => setoid_rewrite tdable_rty_subst
-  | [H: context [ pure_rty ({_ ~r> _} ?τ) ] |- _ ] => setoid_rewrite pure_rty_open in H
-  | [H: context [ pure_rty ({_ := _}r ?τ) ] |- _ ] => setoid_rewrite pure_rty_subst in H
-  | [H: _ |- context [ pure_rty ({_ ~r> _} ?τ) ] ] => setoid_rewrite pure_rty_open
-  | [H: _ |- context [ pure_rty ({_ := _}r ?τ) ] ] => setoid_rewrite pure_rty_subst
-  | [H: context [ is_tm_rty ({_ ~r> _} ?τ) ] |- _ ] => setoid_rewrite is_tm_rty_open in H
-  | [H: context [ is_tm_rty ({_ := _}r ?τ) ] |- _ ] => setoid_rewrite is_tm_rty_subst in H
-  | [H: _ |- context [ is_tm_rty ({_ ~r> _} ?τ) ] ] => setoid_rewrite is_tm_rty_open
-  | [H: _ |- context [ is_tm_rty ({_ := _}r ?τ) ] ] => setoid_rewrite is_tm_rty_subst
+  | [H: context [ (({?k ~r> ?v} _) ⇨ ({S ?k ~r> ?v} _)) ] |- _ ] =>
+      setoid_rewrite rty_open_arr_rev in H
+  | [H: context [ (({?x := ?v}r _) ⇨ ({?x := ?v}r _)) ] |- _ ] =>
+      setoid_rewrite rty_subst_arr_rev in H
+  | [H: _ |- context [ (({?k ~r> ?v} _) ⇨ ({S ?k ~r> ?v} _)) ]] =>
+      setoid_rewrite rty_open_arr_rev
+  | [H: _ |- context [ (({?x := ?v}r _) ⇨ ({?x := ?v}r _)) ] ] =>
+      setoid_rewrite rty_subst_arr_rev
+  | [H: context [ is_over_base_rty ({_ ~r> _} ?τ) ] |- _ ] => setoid_rewrite is_over_base_rty_open in H
+  | [H: context [ is_over_base_rty ({_ := _}r ?τ) ] |- _ ] => setoid_rewrite is_over_base_rty_subst in H
+  | [H: _ |- context [ is_over_base_rty ({_ ~r> _} ?τ) ] ] => setoid_rewrite is_over_base_rty_open
+  | [H: _ |- context [ is_over_base_rty ({_ := _}r ?τ) ] ] => setoid_rewrite is_over_base_rty_subst
+  | [H: context [ is_under_base_rty ({_ ~r> _} ?τ) ] |- _ ] => setoid_rewrite is_under_base_rty_open in H
+  | [H: context [ is_under_base_rty ({_ := _}r ?τ) ] |- _ ] => setoid_rewrite is_under_base_rty_subst in H
+  | [H: _ |- context [ is_under_base_rty ({_ ~r> _} ?τ) ] ] => setoid_rewrite is_under_base_rty_open
+  | [H: _ |- context [ is_under_base_rty ({_ := _}r ?τ) ] ] => setoid_rewrite is_under_base_rty_subst
+  | [H: context [ is_coverage_rty ({_ ~r> _} ?τ) ] |- _ ] => setoid_rewrite is_coverage_rty_open in H
+  | [H: context [ is_coverage_rty ({_ := _}r ?τ) ] |- _ ] => setoid_rewrite is_coverage_rty_subst in H
+  | [H: _ |- context [ is_coverage_rty ({_ ~r> _} ?τ) ] ] => setoid_rewrite is_coverage_rty_open
+  | [H: _ |- context [ is_coverage_rty ({_ := _}r ?τ) ] ] => setoid_rewrite is_coverage_rty_subst
   end.
 
 Lemma fine_rty_open τ: forall k (v_x: value), fine_rty ({ k ~r> v_x} τ) <-> fine_rty τ.
 Proof.
-  induction τ; split; simpl; intros; sinvert H; subst; intuition; repeat fine_rty_aux_simp_aux; eauto.
-  - rewrite <- IHτ1; eauto.
-  - rewrite <- IHτ2; eauto.
-  - rewrite IHτ1; eauto.
-  - rewrite IHτ2; eauto.
-  - rewrite <- IHτ; eauto.
-  - rewrite IHτ; eauto.
+  split; intros; destruct τ; simpl in *; repeat fine_rty_aux_simp_aux; eauto.
 Qed.
 
 Lemma fine_rty_subst: forall τ x (v_x: value), fine_rty ({ x := v_x}r τ) <-> fine_rty τ.
 Proof.
-  induction τ; split; simpl; intros; sinvert H; subst; intuition; repeat fine_rty_aux_simp_aux; eauto.
-  - rewrite <- IHτ1; eauto.
-  - rewrite <- IHτ2; eauto.
-  - rewrite IHτ1; eauto.
-  - rewrite IHτ2; eauto.
-  - rewrite <- IHτ; eauto.
-  - rewrite IHτ; eauto.
+  split; intros; destruct τ; simpl in *; repeat fine_rty_aux_simp_aux; eauto.
 Qed.
 
 Ltac fine_rty_simp_aux :=
-  simpl in *;
   match goal with
+  | [H: context [ (({?k ~r> ?v} _) ⇨ ({S ?k ~r> ?v} _)) ] |- _ ] =>
+      setoid_rewrite rty_open_arr_rev in H
+  | [H: context [ (({?x := ?v}r _) ⇨ ({?x := ?v}r _)) ] |- _ ] =>
+      setoid_rewrite rty_subst_arr_rev in H
+  | [H: _ |- context [ (({?k ~r> ?v} _) ⇨ ({S ?k ~r> ?v} _)) ]] =>
+      setoid_rewrite rty_open_arr_rev
+  | [H: _ |- context [ (({?x := ?v}r _) ⇨ ({?x := ?v}r _)) ] ] =>
+      setoid_rewrite rty_subst_arr_rev
   | [H: context [ fine_rty ({_ ~r> _} ?τ) ] |- _ ] => setoid_rewrite fine_rty_open in H
   | [H: context [ fine_rty ({_ := _}r ?τ) ] |- _ ] => setoid_rewrite fine_rty_subst in H
   | [H: _ |- context [ fine_rty ({_ ~r> _} ?τ) ] ] => setoid_rewrite fine_rty_open
   | [H: _ |- context [ fine_rty ({_ := _}r ?τ) ] ] => setoid_rewrite fine_rty_subst
   | _ => fine_rty_aux_simp_aux
   end.
-
-Lemma is_tm_rty_retrty: forall τ1 τ2 L, closed_rty L (τ1⇨τ2) -> is_tm_rty τ2.
-Proof.
-  intros. sinvert H. sinvert H0. sinvert H4. intuition.
-Qed.
 
 (** Shorthands, used in typing rules *)
 Definition mk_eq_constant c := [: ty_of_const c | b0:c= c ].
@@ -299,31 +340,11 @@ Proof.
   rewrite lc_rty_base_flip in *; eauto.
 Qed.
 
-Lemma lc_rty_td: forall ρ A, lc_rty (ρ!<[A]>) <-> fine_rty (ρ!<[A]>) /\ lc_rty ρ /\ body_td A.
-Proof.
-  split; intros; sinvert H.
-  - intuition. auto_exists_L.
-  - unfold body_td in H1. simp_hyps.
-    auto_exists_L.
-Qed.
-
 Lemma lc_rty_arr: forall ρ τ, lc_rty (ρ ⇨ τ) <-> fine_rty (ρ ⇨ τ) /\ lc_rty ρ /\ body_rty τ.
 Proof.
   split; intros; sinvert H.
   - intuition. auto_exists_L.
   - unfold body_rty in H1. simp_hyps. auto_exists_L; eauto.
-Qed.
-
-Lemma closed_rty_td: forall L ρ A, closed_rty L (ρ!<[ A ]>) <->
-                                fine_rty (ρ!<[A]>) /\ closed_rty L ρ /\ body_td A /\ td_fv A ⊆ L.
-Proof.
-  split; intros; sinvert H.
-  - rewrite lc_rty_td in H0. intuition.
-    + econstructor; eauto. my_set_solver.
-    + my_set_solver.
-  - simp_hyps. sinvert H. econstructor; eauto.
-    + rewrite lc_rty_td. intuition.
-    + my_set_solver.
 Qed.
 
 Lemma closed_rty_arr:
@@ -338,3 +359,7 @@ Proof.
     + rewrite lc_rty_arr. intuition.
     + my_set_solver.
 Qed.
+
+Ltac fine_rty_simp := simpl in *; repeat fine_rty_simp_aux.
+
+Ltac fine_rty_solver := fine_rty_simp; eauto.

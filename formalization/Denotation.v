@@ -4,7 +4,6 @@ From Coq.Program Require Import Wf.
 From CT Require Import CoreLangProp.
 From CT Require Import OperationalSemantics.
 From CT Require Import BasicTypingProp.
-From CT Require Import TransducerProp.
 From CT Require Import RefinementTypeProp.
 From CT Require Import Instantiation.
 
@@ -16,61 +15,11 @@ Import ListCtx.
 Import OperationalSemantics.
 Import BasicTyping.
 Import Qualifier.
-Import Transducer.
 Import RefinementType.
-Import Trace.
 
 (** This file defines type denotations in λᴱ (Fig. 7). *)
 
-(** Trace language (Fig. 7) *)
-
-(** Well-formedness of a single event *)
-Definition valid_evop 'ev{op ~ argv := retv} :=
-  ∅ ⊢t argv ⋮v TNat /\ ∅ ⊢t retv ⋮v ret_ty_of_op op.
-
-(** Well-formedness of traces (Trᵂᶠ in Fig. 7) *)
-Definition valid_trace := Forall valid_evop.
-
-(** Transducer denotation *)
-
-Fixpoint langA (gas: nat) (a: transducer) (α: list evop) (β: list evop) : Prop :=
-  match gas with
-  | 0 => False
-  | S gas' =>
-      closed_td ∅ a /\ valid_trace α /\ valid_trace β /\
-        (match a with
-         | tdId => α = β
-         | ⟨ op | ϕ ⟩/id =>
-             exists (c_arg c_ret: constant),
-             denote_qualifier ({0 ~q> c_ret} ({1 ~q> c_arg} ϕ)) /\
-               α = [ev{op ~ c_arg := c_ret}] /\
-               β = [ev{op ~ c_arg := c_ret}]
-         | ⟨ op1 | ϕ ⟩/⟨ op2 | v_arg | v_ret ⟩ =>
-             exists (c_arg c_ret c_arg' c_ret': constant),
-             v_arg = c_arg' -> v_ret = c_ret' ->
-             denote_qualifier ({0 ~q> c_ret} ({1 ~q> c_arg} ϕ)) /\
-               α = [ev{op1 ~ c_arg := c_ret}] /\
-               β = [ev{op2 ~ c_arg' := c_ret'}]
-         | a1 ○ a2 => exists γ, langA gas' a1 α γ /\ langA gas' a2 γ β
-         | tdUnion a1 a2 => langA gas' a1 α β ∨ langA gas' a2 α β
-         | tdEx b ϕ a =>
-             exists c, ∅ ⊢t c ⋮v b /\ denote_qualifier ({0 ~q> c} ϕ) /\ langA gas' (a ^a^ c) α β
-         | tdExArr T1 T2 a => langA gas' a α β
-         end)
-  end.
-
-Notation "'a⟦' a '⟧' " := (langA (td_measure a) a) (at level 20, format "a⟦ a ⟧", a constr).
-
 (** Type Denotation *)
-
-(* This measure function is used to guarantee termination of the denotation.
-Instead of addtion, we can also use [max] for the subterms. *)
-Fixpoint rty_measure (ρ: rty) : nat :=
-  match ρ with
-  | rtyOver _ _ | rtyUnder _ _ => 1
-  | ρ ⇨ τ => 1 + rty_measure ρ + rty_measure τ
-  | ρ !<[ _ ]> => 1 + rty_measure ρ
-  end.
 
 (** Refinement type and Hoare automata type denotation (Fig. 7) *)
 (* The first argument is an overapproximation of the "size" of [ρ] or [τ]. In
@@ -87,23 +36,17 @@ Fixpoint rtyR (gas: nat) (ρ: rty) (e: tm) : Prop :=
   | S gas' =>
       ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_rty ∅ ρ /\
         match ρ with
-        | {: b | ϕ} =>
-            forall (v: value), (forall α, α ⊧ e ↪*{α} v) -> denote_qualifier (ϕ ^q^ v)
-        | [: b | ϕ] =>
-            forall (v: value), denote_qualifier (ϕ ^q^ v) -> (forall α, α ⊧ e ↪*{α} v)
+        | {: b | ϕ} => exists (v: value), e = v /\ ⟦ ϕ ^q^ v ⟧q
+        | [: b | ϕ] => forall (v: value), ⟦ ϕ ^q^ v ⟧q -> e ↪* v
         | ρx ⇨ τ =>
-            exists (v: value), (forall α, α ⊧ e ↪*{α} v) /\
-                            (forall (v_x: value), rtyR gas' ρx v_x -> rtyR gas' (τ ^r^ v_x) (mk_app_e_v e v_x))
-        | ρ !<[ a ]> =>
-            match ρ with
-            | {: _ | _} | _ !<[ _ ]> => False
-            | [: b | ϕ] =>
-                forall α β (v: value),
-                  a⟦ (a ^a^ v) ⟧ α β -> rtyR gas' {: b | ϕ} v -> α ⊧ e ↪*{β} v
-            | ρx ⇨ τ =>
-                forall α β, a⟦ a ⟧ α β ->
-                            exists (v: value), rtyR gas' (ρx ⇨ τ) v /\ α ⊧ e ↪*{β} v
-            end
+            exists (v: value),
+            e ↪* v /\
+              match ρx with
+              | [: _ | _ ] =>
+                  forall (e_x: tm), rtyR gas' ρx e_x -> rtyR gas' τ (mk_app v e_x)
+              | _ =>
+                  forall (v_x: value), rtyR gas' ρx v_x -> rtyR gas' (τ ^r^ v_x) (mk_app v v_x)
+              end
         end
   end.
 
@@ -111,15 +54,24 @@ Notation "'⟦' τ '⟧' " := (rtyR (rty_measure τ) τ) (at level 20, format "�
 
 (** Context denotation (Fig. 7), defined as an inductive relation instead of a
   [Prop]-valued function. *)
-Inductive ctxRst: listctx rty -> env -> Prop :=
-| ctxRst0: ctxRst [] ∅
-| ctxRst1: forall Γ env (x: atom) ρ (v: value),
-    ctxRst Γ env ->
+Inductive ctxRst: listctx rty -> pp -> Prop :=
+| ctxRst0: ctxRst [] (fun env => env = ∅)
+| ctxRst1: forall Γ pp (x: atom) b ϕ,
+    ctxRst Γ pp ->
     (* [ok_ctx] implies [ρ] is closed and valid, meaning that it does not use
     any function variables. *)
-    ok_ctx (Γ ++ [(x, ρ)]) ->
-    ⟦ m{ env }r ρ ⟧ v ->
-    ctxRst (Γ ++ [(x, ρ)]) (<[ x := v ]> env).
+    ok_ctx (Γ ++ [(x, {: b | ϕ})]) ->
+    ctxRst (Γ ++ [(x, {: b | ϕ})])
+      (fun env => exists env', pp env' /\ forall (v: value), ⟦ m{ env }r {: b | ϕ} ⟧ v -> env' = <[ x := v ]> env)
+| ctxRst2: forall Γ pp (x: atom) b ϕ,
+    ctxRst Γ pp ->
+    (* [ok_ctx] implies [ρ] is closed and valid, meaning that it does not use
+    any function variables. *)
+    ok_ctx (Γ ++ [(x, [: b | ϕ])]) ->
+    ctxRst (Γ ++ [(x, [: b | ϕ])])
+      (fun env => exists env', pp env' /\ exists (v: value), ⟦ m{ env }r {: b | ϕ} ⟧ v /\ env' = <[ x := v ]> env)
+.
+
 
 (** * Properties of denotation *)
 
@@ -301,30 +253,6 @@ Proof.
   rewrite qualifier_and_open.
   rewrite denote_qualifier_and.
   qauto.
-Qed.
-
-Lemma rty_measure_gt_0 ρ : rty_measure ρ > 0.
-Proof.
-  induction ρ; simpl; lia.
-Qed.
-
-Lemma rty_measure_S ρ : exists n, rty_measure ρ = S n.
-Proof.
-  destruct (Nat.lt_exists_pred 0 (rty_measure ρ)).
-  pose proof (rty_measure_gt_0 ρ). lia.
-  intuition eauto.
-Qed.
-
-Lemma open_preserves_rty_measure ρ: forall k t,
-    rty_measure ρ = rty_measure ({k ~r> t} ρ).
-Proof.
-  induction ρ; simpl; eauto.
-Qed.
-
-Lemma subst_preserves_rty_measure ρ: forall x t,
-    rty_measure ρ = rty_measure ({x:=t}r ρ).
-Proof.
-  induction ρ; simpl; eauto.
 Qed.
 
 Ltac lia_simp :=
