@@ -56,6 +56,7 @@ Inductive value : Type :=
 with tm : Type :=
 (* We explicitly connect values and expressions (computation) using a standard
 return syntax, while in the paper values are implicitly expressions. *)
+| terr (ty: ty)
 | treturn (v: value)
 | tlete (e1: tm) (e2: tm)
 | tleteffop (op: effop) (v1: value) (e: tm)
@@ -82,6 +83,7 @@ Fixpoint open_value (k : nat) (s : value) (v : value): value :=
   end
 with open_tm (k : nat) (s : value) (e : tm): tm :=
        match e with
+       | terr ty => terr ty
        | treturn v => treturn (open_value k s v)
        | tlete e1 e2 => tlete (open_tm k s e1) (open_tm (S k) s e2)
        | tletapp v1 v2 e =>
@@ -108,6 +110,7 @@ Fixpoint close_value (x : atom) (s : nat) (v : value): value :=
   end
 with close_tm (x : atom) (s : nat) (e : tm): tm :=
        match e with
+       | terr ty => terr ty
        | treturn v => treturn (close_value x s v)
        | tlete e1 e2 => tlete (close_tm x s e1) (close_tm x (S s) e2)
        | tletapp v1 v2 e =>
@@ -126,6 +129,7 @@ Notation "x '\t\' e" := (close_tm x 0 e) (at level 20).
 
 (** locally closed *)
 Inductive lc: tm -> Prop :=
+| lc_terr: forall (t: ty), lc (terr t)
 | lc_const: forall (c: constant), lc c
 | lc_vfvar: forall (a: atom), lc (vfvar a)
 | lc_vlam: forall T e (L: aset), (forall (x: atom), x ∉ L -> lc (e ^t^ x)) -> lc (vlam T e)
@@ -155,6 +159,7 @@ Fixpoint fv_value (v : value): aset :=
   end
 with fv_tm (e : tm): aset :=
        match e with
+       | terr _ => ∅
        | treturn v => fv_value v
        | tlete e1 e2 => (fv_tm e1) ∪ (fv_tm e2)
        | tletapp v1 v2 e => (fv_value v1) ∪ (fv_value v2) ∪ (fv_tm e)
@@ -178,6 +183,7 @@ Fixpoint value_subst (x : atom) (s : value) (v : value): value :=
   end
 with tm_subst (x : atom) (s : value) (e : tm): tm :=
        match e with
+       | terr ty => terr ty
        | treturn v => treturn (value_subst x s v)
        | tlete e1 e2 => tlete (tm_subst x s e1) (tm_subst x s e2)
        | tletapp v1 v2 e => tletapp (value_subst x s v1) (value_subst x s v2) (tm_subst x s e)

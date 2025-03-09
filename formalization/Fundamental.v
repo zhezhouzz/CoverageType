@@ -2,7 +2,6 @@ From stdpp Require Import mapset.
 From CT Require Import CoreLangProp.
 From CT Require Import OperationalSemantics.
 From CT Require Import BasicTypingProp.
-From CT Require Import TransducerProp.
 From CT Require Import RefinementTypeProp.
 From CT Require Import DenotationProp.
 From CT Require Import InstantiationProp.
@@ -13,11 +12,9 @@ Import CoreLang.
 Import Tactics.
 Import NamelessTactics.
 Import ListCtx.
-Import Trace.
 Import OperationalSemantics.
 Import BasicTyping.
 Import Qualifier.
-Import Transducer.
 Import RefinementType.
 Import Denotation.
 Import Instantiation.
@@ -31,26 +28,23 @@ Ltac simpl_fv :=
                         simpl in H; rewrite ?ctxRst_dom in H by eassumption
                     end).
 
+Lemma wf_implies_non_empty: forall Γ τ, Γ ⊢WF τ -> forall epr, ctxRst Γ epr -> exists env, eprR epr env.
+Admitted.
+
 (** Fundamental theorem for event operator typing *)
 Lemma builtin_fundamental:
   well_formed_builtin_typing ->
   forall (Γ: listctx rty) (op: effop) (ρ : rty),
     Γ ⊢ op ⋮o ρ ->
-    forall Γv, ctxRst Γ Γv -> ⟦ m{ Γv }r ρ ⟧ (value_of_op op).
+    forall epr, ctxRst Γ epr -> exists Γv, eprR epr Γv -> ⟦ m{ Γv }r ρ ⟧ (value_of_op op).
 Proof.
-  intros HWF Γ op ρ Hop Γv HΓv. sinvert Hop.
-  apply H1; eauto.
-  apply HWF in H0.
-  rewrite msubst_fresh_rty; eauto.
-  apply rtyR_typed_closed in H0. simp_hyps.
-  sinvert H3.
-  my_set_solver.
-Qed.
-
-Lemma pure_rty_open ρ (v: value): pure_rty (ρ ^r^ v) = pure_rty ρ.
-Proof.
-  induction ρ; simpl; intros; eauto.
-Qed.
+  intros HWF Γ op ρ Hop.
+  sinvert Hop. apply HWF in H0.
+  intros epr Hepr.
+  sinvert H1. simp_hyps. ospecialize * H1; eauto.
+  destruct H1 as (σ & Hσ). exists σ. intros. ospecialize * Hσ; eauto.
+  rewrite msubst_fresh_rty; eauto. admit.
+Admitted.
 
 Ltac ok_solver :=
   solve [ repeat (match goal with
@@ -60,18 +54,12 @@ Ltac ok_solver :=
 
 Ltac fine_solver_aux :=
   solve [repeat (match goal with
-                 | [H: _ |- pure_rty ({: _ | _ })] => simpl; auto
-                 | [H: _ |- pure_rty ([: _ | _ ])] => simpl; auto
-                 | [H: _ |- pure_rty ( _ ^r^ _)] => rewrite pure_rty_open
-                 | [ H: _ ⊢WF _ |- pure_rty _ ] =>
-                     apply closed_rty_fine in H; eauto; simpl in H; intuition; eauto
                  | [ H: _ ⊢WF _ |- fine_rty _ ] =>
                      apply closed_rty_fine in H; eauto; simpl in H;intuition; eauto
                  end)].
 
 Ltac fine_solver :=
   match goal with
-  | [H: _ |- pure_rty _ ] => fine_solver_aux
   | [H: _ |- fine_rty _ ] => fine_solver_aux
   end.
 
@@ -100,20 +88,7 @@ Ltac lc_solver :=
 
 Ltac misc_solver :=
   repeat msubst_simp;
-  try fine_solver; try is_tm_rty_tac; try ok_solver; try closed_solver; try lc_solver.
-
-Ltac finerty_destruct τ :=
-  destruct τ; repeat msubst_simp;
-  try match goal with
-    | [H: _ ⊢WF ({: _ | _ }!<[ _ ]>) |- _ ] =>
-        apply closed_rty_fine in H; simpl in H; intuition
-    | [H: _ ⊢WF ((_ !<[ _ ]> )!<[ _ ]>) |- _ ] =>
-        apply closed_rty_fine in H; simpl in H; intuition
-    | [H: closed_rty ∅ ({: _ | _ }!<[ _ ]>) |- _ ] =>
-        apply closed_rty_fine in H; simpl in H; intuition
-    | [H: closed_rty ∅ ((_ !<[ _ ]> )!<[ _ ]>) |- _ ] =>
-        apply closed_rty_fine in H; simpl in H; intuition
-    end.
+  try fine_solver; try ok_solver; try closed_solver; try lc_solver.
 
   (* At some point the proof is very slow without marking [msubst] opaque. *)
 Opaque msubst.
@@ -126,17 +101,19 @@ Ltac ctx_erase_tac :=
 
 Ltac restructure_typing HOrg :=
   match goal with
-  | [H: ctxRst ?Γ _, HJ: _ ⊢ _ ⋮join _ ⋮= _ |- (⟦(m{ _ }r) ?τ⟧) ((m{ _ }t) ?e)] =>
-      assert (Γ ⊢ e ⋮t τ) as HOrg by (eapply TJoin in HJ; eauto)
+  | [H: ctxRst ?Γ _, HJ: _ ⊢ _ ⋮merge _ ⋮= _ |- (⟦(m{ _ }r) ?τ⟧) ((m{ _ }t) ?e)] =>
+      assert (Γ ⊢ e ⋮t τ) as HOrg by (eapply TMerge in HJ; eauto)
   | [H: ctxRst ?Γ _ |- (⟦(m{ _ }r) ?τ⟧) ((m{ _ }t) ?e)] =>
       assert (Γ ⊢ e ⋮t τ) as HOrg by
-        (solve [eapply TLift; eauto] ||
+        (solve [eapply TValue; eauto] ||
            solve [eapply TSub; eauto] ||
-             solve [eapply TJoin; eauto] ||
+             solve [eapply TMerge; eauto] ||
                solve [eapply TLetE; eauto] ||
-                   solve [eapply TApp; eauto] ||
+                   solve [eapply TAppOverParam; eauto] ||
+                     solve [eapply TAppFuncParam; eauto] ||
                        solve [eapply TAppOp; eauto] ||
-                         solve [eapply TMatchb; eauto]
+                         solve [eapply TMatchbTrue; eauto] ||
+                           solve [eapply TMatchbFalse; eauto]
         )
   | [H: ctxRst ?Γ _ |- (⟦(m{ _ }r) ?τ⟧) (treturn (m{_}v ?e))] =>
       assert (Γ ⊢ e ⋮v τ) as HOrg by
@@ -161,14 +138,14 @@ Ltac restructure_typing_regular :=
       pose (msubst_preserves_basic_typing_value_empty _ _  H _ _ HBTOrg) as HBTOrgMsubst
   end.
 
-Ltac auto_ctx_letbinding v_x :=
-  match goal with
-  | [H: ∀ _, _ ∉ _ -> ∀ _, (ctxRst (?Γ ++ [(_, ?τ)]) _) -> _, H': ctxRst ?Γ ?Γv |- _ ] =>
-      let x := fresh "x" in
-      auto_pose_fv x; repeat specialize_with x;
-      assert (ctxRst (Γ ++ [(x, τ)]) (<[x:=v_x]> Γv)) as HΓv';
-      try (apply ctxRst_insert_easy; eauto; misc_solver)
-  end.
+(* Ltac auto_ctx_letbinding v_x := *)
+(*   match goal with *)
+(*   | [H: ∀ _, _ ∉ _ -> ∀ _, (ctxRst (?Γ ++ [(_, ?τ)]) _) -> _, H': ctxRst ?Γ ?Γv |- _ ] => *)
+(*       let x := fresh "x" in *)
+(*       auto_pose_fv x; repeat specialize_with x; *)
+(*       assert (ctxRst (Γ ++ [(x, τ)]) (<[x:=v_x]> Γv)) as HΓv'; *)
+(*       try (apply ctxRst_insert_easy; eauto; misc_solver) *)
+(*   end. *)
 
 (** Combined fundamental theorem for value typing (refinemnet types) and term
   typing (Hoare automata types) *)
@@ -176,16 +153,17 @@ Theorem fundamental_combined:
   well_formed_builtin_typing ->
   (forall (Γ: listctx rty) (v: value) (ρ: rty),
       Γ ⊢ v ⋮v ρ ->
-      forall Γv, ctxRst Γ Γv -> ⟦ m{Γv}r ρ ⟧ (m{Γv}v v)) /\
+      forall epr, ctxRst Γ epr -> exists Γv, ⟦ m{Γv}r ρ ⟧ (m{Γv}v v)) /\
     (forall (Γ: listctx rty) (e: tm) (τ: rty),
         Γ ⊢ e ⋮t τ ->
-        forall Γv, ctxRst Γ Γv -> ⟦ m{ Γv }r τ ⟧ (m{ Γv }t e)).
+        forall epr, ctxRst Γ epr -> exists Γv, ⟦ m{ Γv }r τ ⟧ (m{ Γv }t e)).
 Proof.
   pose value_reduction_any_ctx as HPureStep.
   intros HWFbuiltin.
   apply value_term_type_check_mutind.
   (* [TSubPP] *)
   - intros Γ v ρ1 ρ2 HWFρ2 _ HDρ1 Hsub Γv HΓv. specialize (HDρ1 _ HΓv).
+    sinvert Hsub. simp_hyp H0. ospecialize * H1; eauto.
     apply Hsub in HDρ1; auto.
   (* [TConst] *)
   - intros Γ c HWF Γv HΓv. repeat msubst_simp. eauto using mk_eq_constant_denote_rty.
@@ -272,7 +250,7 @@ Proof.
   (* [TSub] *)
   - intros Γ e τ1 τ2 HWFτ2 _ HDτ1 Hsub Γv HΓv. specialize (HDτ1 _ HΓv).
     apply Hsub in HDτ1; auto.
-  (* [TJoin] *)
+  (* [TMerge] *)
   - unfold join. intros Γ e τ1 τ2 τ3 HWFτ3 _ HDτ1 _ HDτ2 (_ & _ & _ & _ & Hjoin) Γv HΓv.
     specialize (HDτ1 _ HΓv). specialize (HDτ2 _ HΓv).
     rewrite Hjoin; eauto.

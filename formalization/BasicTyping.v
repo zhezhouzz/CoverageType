@@ -33,6 +33,7 @@ Reserved Notation "Γ '⊢t' t '⋮v' T" (at level 40).
 
 (** Basic typing rules  *)
 Inductive tm_has_type : context -> tm -> ty -> Prop :=
+| BtErr: forall Γ T, Γ ⊢t (terr T) ⋮t T
 | BtValue : forall Γ v T, Γ ⊢t v ⋮v T -> Γ ⊢t v ⋮t T
 | BtLetE : forall Γ e1 e2 T1 T2 (L: aset),
     Γ ⊢t e1 ⋮t T1 ->

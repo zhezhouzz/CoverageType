@@ -19,9 +19,29 @@ Import RefinementType.
 
 (** Environment (substitution) *)
 Notation env := (amap value).
-Notation pp := ((amap value) -> Prop).
+
+Inductive epr : Type :=
+| Epr (σ: env) (L: aset) (Σ: env -> Prop).
 
 Definition closed_env (env : env) := map_Forall (fun _ => closed_value) env.
+Inductive closed_epr: epr -> Prop :=
+| Closed_epr: forall (σ: env) (L: aset) (Σ: env -> Prop),
+    dom σ ∩ L = ∅ ->
+    closed_env σ ->
+    (forall σ', Σ σ' -> closed_env σ /\ dom σ' = L) ->
+    closed_epr (Epr σ L Σ).
+
+Definition eprdom (epr: epr) :=
+  match epr with
+  | Epr σ L _ => dom σ ∪ L
+  end.
+
+Inductive eprR: epr -> env -> Prop :=
+| EprR: forall σ1 σ2 L Σ, Σ σ2 -> eprR (Epr σ1 L Σ) (σ1 ∪ σ2).
+
+#[global]
+  Instance epr_stale {A:Type} : Stale epr := eprdom.
+Arguments epr_stale /.
 
 (** Multi-substitution, i.e., σ(⋅) operation. The definition is parameterized by
   any substitution. *)
