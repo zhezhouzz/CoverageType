@@ -1,7 +1,6 @@
 stat/*
 .stat.json
 output/*
-data/*
 *.DS_Store
 *.png
 *.dump
