@@ -90,7 +90,9 @@ let default_v = "v"
 
 type 't cty = { nty : Nt.nt; phi : 't prop } [@@deriving eq, ord, show, sexp]
 type ou = Over | Under [@@deriving eq, ord, show, sexp]
-type arr_type = NormalArr | GhostOverBaseArr [@@deriving eq, ord, show, sexp]
+
+(* type arr_type = NormalArr | GhostOverBaseArr [@@deriving eq, ord, show, sexp] *)
+type arr_type = NormalArr [@@deriving eq, ord, show, sexp]
 
 type 't rty =
   | RtyBase of { ou : ou; cty : 't cty }

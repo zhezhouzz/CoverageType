@@ -15,7 +15,9 @@ let rec layout_rty = function
   | RtyArr { arr_type; argrty; arg; retty } ->
       let argrty = layout_rty_bracket argrty in
       let arr =
-        match arr_type with NormalArr -> "→" | GhostOverBaseArr -> "⇢"
+        (* match arr_type with NormalArr -> "→" | GhostOverBaseArr -> "⇢" *)
+        match arr_type with
+        | NormalArr -> "→"
       in
       if List.exists (String.equal arg) @@ fv_rty_id retty then
         spf "%s:%s %s %s" arg argrty arr (layout_rty retty)
@@ -36,7 +38,7 @@ let get_ou expr =
 let get_arr_type expr =
   match expr.pexp_attributes with
   | l when List.exists (fun x -> String.equal x.attr_name.txt "ghost") l ->
-      GhostOverBaseArr
+      failwith "ghost variable is disallowed" (* GhostOverBaseArr *)
   | _ -> NormalArr
 
 let rec rty_of_expr expr =

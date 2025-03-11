@@ -96,8 +96,8 @@ let check_wf_rty (tau : 't rty) =
     | RtyBase _ -> ()
     | RtyArr { arr_type; argrty; arg; retty } -> (
         match (arr_type, argrty) with
-        | GhostOverBaseArr, RtyBase { ou = Over; _ } -> ()
-        | GhostOverBaseArr, _ -> _die_with [%here] "Rty is not well-fromed"
+        (* | GhostOverBaseArr, RtyBase { ou = Over; _ } -> () *)
+        (* | GhostOverBaseArr, _ -> _die_with [%here] "Rty is not well-fromed" *)
         | NormalArr, RtyBase { ou = Over; _ } -> ()
         | NormalArr, _ ->
             if is_free_rty arg retty then
@@ -172,6 +172,27 @@ let destruct_base_rty = function
   | RtyBase { ou; cty } -> (ou, cty)
   | _ -> failwith "assume_base_rty"
 
+let destruct_arr_rty loc = function
+  | RtyArr { arr_type; argrty; arg; retty } -> (arr_type, argrty, arg, retty)
+  | _ -> _die loc
+
+let is_over_arr_rty = function
+  | RtyArr
+      { arr_type = NormalArr; argrty = RtyBase { ou = Over; _ }; arg; retty } ->
+      true
+  | _ -> false
+
+let is_under_arr_rty = function
+  | RtyArr
+      { arr_type = NormalArr; argrty = RtyBase { ou = Under; _ }; arg; retty }
+    ->
+      true
+  | _ -> false
+
+let is_arr_arr_rty = function
+  | RtyArr { arr_type = NormalArr; argrty = RtyArr _; arg; retty } -> true
+  | _ -> false
+
 let ou_to_qt = function Over -> Nt.Fa | Under -> Nt.Ex
 let qt_to_ou = function Nt.Fa -> Over | Nt.Ex -> Under
 
@@ -222,25 +243,25 @@ let mk_eq_tvar_underrty x = RtyBase { ou = Under; cty = mk_eq_tvar_cty x }
 let mk_eq_c_overrty x = RtyBase { ou = Over; cty = mk_eq_c_cty x }
 let mk_eq_c_underrty x = RtyBase { ou = Under; cty = mk_eq_c_cty x }
 
-let destruct_grty =
-  let rec aux rty =
-    match rty with
-    | RtyBase _ | RtyProd _ | RtyArr { arr_type = NormalArr; _ } -> ([], rty)
-    | RtyArr { arr_type = GhostOverBaseArr; argrty; arg; retty } ->
-        let arg' = Rename.unique arg in
-        let retty =
-          subst_rty_instance arg (AVar arg'#:(erase_rty argrty)) retty
-        in
-        let gvars, res = aux retty in
-        ((arg'#:argrty) :: gvars, res)
-  in
-  aux
+(* let destruct_grty = *)
+(*   let rec aux rty = *)
+(*     match rty with *)
+(*     | RtyBase _ | RtyProd _ | RtyArr { arr_type = NormalArr; _ } -> ([], rty) *)
+(*     | RtyArr { arr_type = GhostOverBaseArr; argrty; arg; retty } -> *)
+(*         let arg' = Rename.unique arg in *)
+(*         let retty = *)
+(*           subst_rty_instance arg (AVar arg'#:(erase_rty argrty)) retty *)
+(*         in *)
+(*         let gvars, res = aux retty in *)
+(*         ((arg'#:argrty) :: gvars, res) *)
+(*   in *)
+(*   aux *)
 
-let construct_grty gvars rty =
-  List.fold_right
-    (fun x retty ->
-      RtyArr { arr_type = GhostOverBaseArr; argrty = x.ty; arg = x.x; retty })
-    gvars rty
+(* let construct_grty gvars rty = *)
+(*   List.fold_right *)
+(*     (fun x retty -> *)
+(*       RtyArr { arr_type = GhostOverBaseArr; argrty = x.ty; arg = x.x; retty }) *)
+(*     gvars rty *)
 
 let rec flip_rty rty =
   match rty with
@@ -333,6 +354,15 @@ let axiom_add_to_rights { builtin_ctx; axioms } x =
 let bctx_to_axioms bctx = List.map _get_ty @@ ctx_to_list bctx.axioms
 
 (** Monad *)
+
+let mk_return_rty retty =
+  RtyArr
+    {
+      arr_type = NormalArr;
+      retty;
+      arg = Rename.unique "dummy";
+      argrty = mk_top_overrty Nt.unit_ty;
+    }
 
 let ret_ty loc = function
   | RtyArr { arr_type = NormalArr; retty; _ } -> retty

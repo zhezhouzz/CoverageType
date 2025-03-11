@@ -17,12 +17,20 @@ let[@assert] flatten ?l:(n = ((v >= 0 : [%v: int]) [@over]))
     ?l:(tr = ((treeNumNode v == n : [%v: int tree]) [@under])) =
   (listLen v == n : [%v: int list]) [@under]
 
-(* let list_gen (tree_gen : unit -> int tree) : unit -> int list = *)
-(*   fmap (fun (tr : int tree) -> flatten (tree_num_node tr) tr) tree_gen *)
+(* let[@library] flatten ?l:(n = ((v >= 0 : [%v: int]) [@over])) *)
+(*     ?l:(tr = ((treeNumNode v == n : [%v: int tree]) [@under])) = *)
+(*   (listLen v == n : [%v: int list]) [@under] *)
 
-(* let[@assert] list_gen *)
-(*     ?l:(u1 = *)
-(*         fun ?l:(tmp1 = ((true : [%v: unit]) [@over])) -> *)
-(*           ((true : [%v: int tree]) [@under])) = *)
-(*  fun ?l:(tmp2 = ((true : [%v: unit]) [@over])) -> *)
-(*   ((true : [%v: int list]) [@under]) *)
+let list_gen (tree_gen : unit -> int tree) : unit -> int list =
+  fmap
+    (fun (tr : int tree) ->
+      let (res : int list) = flatten (tree_num_node tr) tr in
+      res)
+    tree_gen
+
+let[@assert] list_gen
+    ?l:(u1 =
+        fun ?l:(tmp1 = ((true : [%v: unit]) [@over])) ->
+          ((true : [%v: int tree]) [@under])) =
+ fun ?l:(tmp2 = ((true : [%v: unit]) [@over])) ->
+  ((true : [%v: int list]) [@under])

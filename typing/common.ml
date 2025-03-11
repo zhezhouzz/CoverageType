@@ -18,34 +18,43 @@ module Rctx = struct
 
   let emp = Typectx.emp
 
-  let to_ctx_g_v_pair ctx =
-    let rec aux (gctx, ctx) l =
-      match l with
-      | [] -> (gctx, ctx)
-      | x :: l ->
-          let gvars, rty = destruct_grty x.ty in
-          let gctx = Typectx.add_to_rights gctx gvars in
-          let ctx = Typectx.add_to_right ctx x.x#:rty in
-          aux (gctx, ctx) l
-    in
-    Typectx.(aux (emp, emp) ctx)
+  (* let to_ctx_g_v_pair ctx = *)
+  (*   let rec aux (gctx, ctx) l = *)
+  (*     match l with *)
+  (*     | [] -> (gctx, ctx) *)
+  (*     | x :: l -> *)
+  (*         let gvars, rty = destruct_grty x.ty in *)
+  (*         let gctx = Typectx.add_to_rights gctx gvars in *)
+  (*         let ctx = Typectx.add_to_right ctx x.x#:rty in *)
+  (*         aux (gctx, ctx) l *)
+  (*   in *)
+  (*   Typectx.(aux (emp, emp) ctx) *)
 
-  let to_ctx ctx =
-    let gctx, ctx = to_ctx_g_v_pair (Typectx.ctx_to_list ctx) in
-    Typectx.concat gctx ctx
+  let to_ctx ctx = ctx
+  (* let gctx, ctx = to_ctx_g_v_pair (Typectx.ctx_to_list ctx) in *)
+  (* Typectx.concat gctx ctx *)
 
   let add_var ctx x = add_to_right ctx x
   let add_vars res l = List.fold_left add_var res l
 
+  (* let diff_exists_rty_opt ctx1 ctx2 rty = *)
+  (*   let* ctx = subtract_opt (equal_rty Nt.equal_nt) ctx1 ctx2 in *)
+  (*   let gvars, vars = map2 Typectx.ctx_to_list @@ to_ctx_g_v_pair ctx in *)
+  (*   let _ = *)
+  (*     _log @@ fun () -> *)
+  (*     Pp.printf "exists [%s], [%s] into %s\n" (layout_rtyed_vars gvars) *)
+  (*       (layout_rtyed_vars vars) (layout_rty rty) *)
+  (*   in *)
+  (*   Some (construct_grty gvars @@ exists_rtys vars rty) *)
+
   let diff_exists_rty_opt ctx1 ctx2 rty =
-    let* ctx = subtract_opt (equal_rty Nt.equal_nt) ctx1 ctx2 in
-    let gvars, vars = map2 Typectx.ctx_to_list @@ to_ctx_g_v_pair ctx in
+    let* vars = subtract_opt (equal_rty Nt.equal_nt) ctx1 ctx2 in
     let _ =
       _log @@ fun () ->
-      Pp.printf "exists [%s], [%s] into %s\n" (layout_rtyed_vars gvars)
-        (layout_rtyed_vars vars) (layout_rty rty)
+      Pp.printf "exists [%s] into %s\n" (layout_rtyed_vars vars)
+        (layout_rty rty)
     in
-    Some (construct_grty gvars @@ exists_rtys vars rty)
+    Some (exists_rtys vars rty)
 
   let diff_exists_rty loc ctx1 ctx2 rty =
     match diff_exists_rty_opt ctx1 ctx2 rty with

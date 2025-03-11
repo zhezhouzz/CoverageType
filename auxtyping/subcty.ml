@@ -4,6 +4,7 @@ open Prop
 open Myconfig
 open Zdatatype
 
+let _log_auxtyping = _log "auxtyping"
 let layout_qt = function Nt.Fa -> "∀" | Nt.Ex -> "∃"
 
 let layout_qv { x = qt, x; ty } =
@@ -53,7 +54,7 @@ let check_sat axioms query =
 let sub_cty ou builtin_ctx ctx cty1 cty2 =
   let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list ctx) in
   let () =
-    _log_queries @@ fun _ ->
+    _log_auxtyping @@ fun _ ->
     let overctx =
       List.map (fun (x, cty) -> x#:(RtyBase { ou = Over; cty })) overctx
     in
@@ -96,13 +97,13 @@ let sub_cty ou builtin_ctx ctx cty1 cty2 =
     @@ List.fold_right smart_dependent_exists underctx query
   in
   let () =
-    _log_queries @@ fun _ ->
+    _log_auxtyping @@ fun _ ->
     Printf.printf "check valid: %s\n" (layout_prop query)
   in
-  let () =
-    _log_queries @@ fun _ ->
-    Printf.printf "let[@axiom] %s\n" (layout_prop__raw query)
-  in
+  (* let () = *)
+  (*   _log_auxtyping @@ fun _ -> *)
+  (*   Printf.printf "let[@axiom] %s\n" (layout_prop__raw query) *)
+  (* in *)
   check_valid (bctx_to_axioms builtin_ctx) query
 
 (* NOTE: after exists the constraints into the return type, the emptiness can be checked final stage;
@@ -116,7 +117,7 @@ let non_emptiness_cty builtin_ctx ctx cty =
     let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list ctx) in
     let underctx = underctx @ [ (default_v, mk_top_cty cty.nty) ] in
     let () =
-      _log_queries @@ fun _ ->
+      _log_auxtyping @@ fun _ ->
       let overctx =
         List.map (fun (x, cty) -> x#:(RtyBase { ou = Over; cty })) overctx
       in
@@ -139,7 +140,7 @@ let non_emptiness_cty builtin_ctx ctx cty =
       @@ cty.phi
     in
     let () =
-      _log_queries @@ fun _ ->
+      _log_auxtyping @@ fun _ ->
       Printf.printf "check sat: %s\n" (layout_prop_ query)
     in
     check_sat (bctx_to_axioms builtin_ctx) query
