@@ -2,6 +2,10 @@ open Zutils
 open Prop
 open Sexplib.Std
 
+let _return = "return"
+let _bind = "bind"
+let _fmap = "fmap"
+
 type 't value =
   | VConst of constant
   | VVar of (('t, string) typed[@free])

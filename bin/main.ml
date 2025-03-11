@@ -31,6 +31,8 @@ let subtype_check source_file () =
 
 let type_check source_file () =
   let code = Preprocess.preproress source_file in
+  (* let () = Pp.printf "@{<bold>result:@} %s\n" (layout_structure code) in *)
+  (* let () = _die [%here] in *)
   let _ = Typing.struc_check (Preprocess.load_bctx ()) code in
   ()
 

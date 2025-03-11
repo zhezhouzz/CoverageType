@@ -9,8 +9,8 @@ let _log = Myconfig._log_typing
 let mk_self_wf_dec x =
   let open Prop in
   if Nt.equal_nt x.ty Nt.int_ty then
-    let lt = "<" #: Nt.(construct_arr_tp ([ int_ty; int_ty ], bool_ty)) in
-    lit_to_prop (AAppOp (lt, List.map tvar_to_lit [ default_v #: x.ty; x ]))
+    let lt = "<"#:Nt.(construct_arr_tp ([ int_ty; int_ty ], bool_ty)) in
+    lit_to_prop (AAppOp (lt, List.map tvar_to_lit [ default_v#:x.ty; x ]))
   else _failatwith [%here] "unimp"
 
 module Rctx = struct
@@ -25,7 +25,7 @@ module Rctx = struct
       | x :: l ->
           let gvars, rty = destruct_grty x.ty in
           let gctx = Typectx.add_to_rights gctx gvars in
-          let ctx = Typectx.add_to_right ctx x.x #: rty in
+          let ctx = Typectx.add_to_right ctx x.x#:rty in
           aux (gctx, ctx) l
     in
     Typectx.(aux (emp, emp) ctx)
@@ -96,6 +96,10 @@ let pprint_typing_infer_value_before rctx e =
 let pprint_typing_infer_value_after rctx (e, ty) =
   _log
   @@ pprint_typing_infer (pprint rctx) (layout_typed_value e, layout_rty_opt ty)
+
+let pprint_typing_infer_match_case rctx e constr ty =
+  (_log @@ fun _ -> Pp.printf "@{<bold>Infer from match case %s:@}\n" constr.x);
+  _log @@ pprint_typing_infer (pprint rctx) (layout_typed_value e, layout_rty ty)
 
 let rec lookup_ctxs ctxs id =
   match ctxs with

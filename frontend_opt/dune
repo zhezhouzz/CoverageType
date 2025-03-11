@@ -9,6 +9,7 @@
   to_rty
   to_type_dec
   to_judgement
+  ; to_axiom
   to_item
   frontend_opt
  )

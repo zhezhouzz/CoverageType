@@ -108,10 +108,10 @@ let check_wf_rty (tau : 't rty) =
   in
   aux tau
 
-let constant_to_value c = (VConst c) #: (Prop.constant_to_nt c)
-let value_to_term v = (CVal v) #: v.ty
-let term_to_value e = match e.x with CVal v -> v.x #: e.ty | _ -> _die [%here]
-let id_to_value v = (VVar v) #: v.ty
+let constant_to_value c = (VConst c)#:(Prop.constant_to_nt c)
+let value_to_term v = (CVal v)#:v.ty
+let term_to_value e = match e.x with CVal v -> v.x#:e.ty | _ -> _die [%here]
+let id_to_value v = (VVar v)#:v.ty
 let id_to_term v = value_to_term @@ id_to_value v
 
 let map_rty_retty f rty =
@@ -124,14 +124,13 @@ let map_rty_retty f rty =
   in
   aux rty
 
-let mk_lam lamarg body =
-  (VLam { lamarg; body }) #: (Nt.mk_arr lamarg.ty body.ty)
+let mk_lam lamarg body = (VLam { lamarg; body })#:(Nt.mk_arr lamarg.ty body.ty)
 
 let mk_id_function ty =
-  let lamarg = "x" #: ty in
-  (VLam { lamarg; body = id_to_term lamarg }) #: (Nt.mk_arr ty ty)
+  let lamarg = "x"#:ty in
+  (VLam { lamarg; body = id_to_term lamarg })#:(Nt.mk_arr ty ty)
 
-let mk_fix fixname fixarg body = (VFix { fixname; fixarg; body }) #: fixname.ty
+let mk_fix fixname fixarg body = (VFix { fixname; fixarg; body })#:fixname.ty
 
 let lam_to_fix fixname body =
   match body.x with
@@ -141,11 +140,11 @@ let lam_to_fix fixname body =
 let lam_to_fix_comp fixname body =
   value_to_term (lam_to_fix fixname (term_to_value body))
 
-let mk_lete lhs rhs body = (CLetE { lhs; rhs; body }) #: body.ty
-let mk_app appf apparg = (CApp { appf; apparg }) #: (Nt.get_arr_rhs appf.ty)
+let mk_lete lhs rhs body = (CLetE { lhs; rhs; body })#:body.ty
+let mk_app appf apparg = (CApp { appf; apparg })#:(Nt.get_arr_rhs appf.ty)
 
 let mk_appop op appopargs =
-  (CAppOp { op; appopargs }) #: (snd @@ Nt.destruct_arr_tp op.ty)
+  (CAppOp { op; appopargs })#:(snd @@ Nt.destruct_arr_tp op.ty)
 
 let rec __get_lam_term_ty loc = function
   | Lam { lamarg; lambody } -> (
@@ -211,10 +210,10 @@ let value_to_lit loc = function
   | VConst c -> AC c
   | _ -> _die loc
 
-let mk_eq_var_prop x = lit_to_prop (mk_var_eq_var [%here] default_v #: x.ty x)
+let mk_eq_var_prop x = lit_to_prop (mk_var_eq_var [%here] default_v#:x.ty x)
 
 let mk_eq_c_prop c =
-  lit_to_prop (mk_var_eq_c [%here] default_v #: (constant_to_nt c) c)
+  lit_to_prop (mk_var_eq_c [%here] default_v#:(constant_to_nt c) c)
 
 let mk_eq_tvar_cty x = { nty = x.ty; phi = mk_eq_var_prop x }
 let mk_eq_c_cty c = { nty = constant_to_nt c; phi = mk_eq_c_prop c }
@@ -230,10 +229,10 @@ let destruct_grty =
     | RtyArr { arr_type = GhostOverBaseArr; argrty; arg; retty } ->
         let arg' = Rename.unique arg in
         let retty =
-          subst_rty_instance arg (AVar arg' #: (erase_rty argrty)) retty
+          subst_rty_instance arg (AVar arg'#:(erase_rty argrty)) retty
         in
         let gvars, res = aux retty in
-        ((arg' #: argrty) :: gvars, res)
+        ((arg'#:argrty) :: gvars, res)
   in
   aux
 
@@ -243,26 +242,32 @@ let construct_grty gvars rty =
       RtyArr { arr_type = GhostOverBaseArr; argrty = x.ty; arg = x.x; retty })
     gvars rty
 
+let rec flip_rty rty =
+  match rty with
+  | RtyBase { ou = Over; cty } -> RtyBase { ou = Under; cty }
+  | RtyBase { ou = Under; cty } -> RtyBase { ou = Over; cty }
+  | RtyProd (r1, r2) -> RtyProd (flip_rty r1, flip_rty r2)
+  | RtyArr _ -> rty
+
 (** Denormalize *)
 
 let rec typed_value_to_typed_raw_term (value_e : ('t, 't value) typed) =
   match value_e.x with
-  | VConst constant0 -> (Const constant0) #: value_e.ty
-  | VVar _t_stringtyped0 -> (Var _t_stringtyped0) #: value_e.ty
+  | VConst constant0 -> (Const constant0)#:value_e.ty
+  | VVar _t_stringtyped0 -> (Var _t_stringtyped0)#:value_e.ty
   | VLam { lamarg; body } ->
-      (Lam { lamarg; lambody = typed_term_to_typed_raw_term body })
-      #: value_e.ty
+      (Lam { lamarg; lambody = typed_term_to_typed_raw_term body })#:value_e.ty
   | VFix { fixarg; body; _ } ->
       (* let tmp = (VLam { lamarg = fixarg; body }) #: body.ty in *)
-      let tmp = (VLam { lamarg = fixarg; body }) #: value_e.ty in
+      let tmp = (VLam { lamarg = fixarg; body })#:value_e.ty in
       typed_value_to_typed_raw_term tmp
   | VTuple _t__tvaluetypedlist0 ->
-      (Tuple (List.map typed_value_to_typed_raw_term _t__tvaluetypedlist0))
-      #: value_e.ty
+      (Tuple (List.map typed_value_to_typed_raw_term _t__tvaluetypedlist0))#:value_e
+                                                                               .ty
 
 and typed_term_to_typed_raw_term (term_e : ('t, 't term) typed) =
   match term_e.x with
-  | CErr -> Err #: term_e.ty
+  | CErr -> Err#:term_e.ty
   | CVal _t__tvaluetyped0 -> typed_value_to_typed_raw_term _t__tvaluetyped0
   | CLetE { rhs; lhs; body } ->
       (Let
@@ -271,8 +276,7 @@ and typed_term_to_typed_raw_term (term_e : ('t, 't term) typed) =
            lhs = [ lhs ];
            letbody = typed_term_to_typed_raw_term body;
            if_rec = false;
-         })
-      #: term_e.ty
+         })#:term_e.ty
   | CLetDeTuple { turhs; tulhs; body } ->
       (Let
          {
@@ -280,23 +284,19 @@ and typed_term_to_typed_raw_term (term_e : ('t, 't term) typed) =
            lhs = tulhs;
            letbody = typed_term_to_typed_raw_term body;
            if_rec = false;
-         })
-      #: term_e.ty
+         })#:term_e.ty
   | CApp { appf; apparg } ->
       (App
          ( typed_value_to_typed_raw_term appf,
-           [ typed_value_to_typed_raw_term apparg ] ))
-      #: term_e.ty
+           [ typed_value_to_typed_raw_term apparg ] ))#:term_e.ty
   | CAppOp { op; appopargs } ->
-      (AppOp (op, List.map typed_value_to_typed_raw_term appopargs))
-      #: term_e.ty
+      (AppOp (op, List.map typed_value_to_typed_raw_term appopargs))#:term_e.ty
   | CMatch { matched; match_cases } ->
       (Match
          {
            matched = typed_value_to_typed_raw_term matched;
            match_cases = List.map macth_case_to_raw_macth_case match_cases;
-         })
-      #: term_e.ty
+         })#:term_e.ty
 
 and macth_case_to_raw_macth_case = function
   | CMatchcase { constructor; args; exp } ->
@@ -331,3 +331,50 @@ let axiom_add_to_rights { builtin_ctx; axioms } x =
   { builtin_ctx; axioms = add_to_rights axioms x }
 
 let bctx_to_axioms bctx = List.map _get_ty @@ ctx_to_list bctx.axioms
+
+(** Monad *)
+
+let ret_ty loc = function
+  | RtyArr { arr_type = NormalArr; retty; _ } -> retty
+  | _ -> _die loc
+
+let mk_nfv_arr argrty retty =
+  let dummy = Rename.unique "dummy" in
+  RtyArr { arr_type = NormalArr; argrty; retty; arg = dummy }
+
+let get_raw_function_name x = match x.x with Var x -> Some x.x | _ -> None
+
+let is_raw_monadic_bind x =
+  match get_raw_function_name x with
+  | Some x when String.equal x _bind -> true
+  | _ -> false
+
+let is_raw_monadic_fmap x =
+  match get_raw_function_name x with
+  | Some x when String.equal x _fmap -> true
+  | _ -> false
+
+let get_op_name x = match x.x with PrimOp x -> Some x | _ -> None
+
+let is_monadic_bind x =
+  match get_op_name x with
+  | Some x when String.equal x _bind -> true
+  | _ -> false
+
+let is_monadic_fmap x =
+  match get_op_name x with
+  | Some x when String.equal x _fmap -> true
+  | _ -> false
+
+let rec fresh_name_rty rty =
+  match rty with
+  | RtyBase _ -> rty
+  | RtyProd (rty1, rty2) -> RtyProd (fresh_name_rty rty1, fresh_name_rty rty2)
+  | RtyArr { arr_type; argrty; arg; retty } ->
+      let argrty = fresh_name_rty argrty in
+      let arg' = Rename.unique arg in
+      let retty =
+        subst_rty_instance arg (AVar arg'#:(erase_rty argrty)) retty
+      in
+      let retty = fresh_name_rty retty in
+      RtyArr { arr_type; argrty; arg = arg'; retty }

@@ -71,7 +71,7 @@ open Sugar
 (* let id_to_var id = (fun x -> Var x) #-> id *)
 
 let update_ty { x; ty } ty' =
-  match ty with Nt.Ty_unknown -> x #: ty' | _ -> x #: ty'
+  match ty with Nt.Ty_unknown -> x#:ty' | _ -> x#:ty'
 
 type 't term_or_op =
   | C_is_term of ('t, 't raw_term) typed
@@ -79,13 +79,13 @@ type 't term_or_op =
 
 let constructor_to_term_or_op c =
   match c with
-  | "Err" | "Exn" -> C_is_term Err #: Nt.Ty_any
+  | "Err" | "Exn" -> C_is_term Err#:Nt.Ty_any
   | "true" | "false" | "()" ->
       C_is_term { x = Const (string_to_constant c); ty = Nt.Ty_unknown }
   | name -> (
       match string_to_op_opt name with
       | None -> _failatwith [%here] "die: pat"
-      | Some op -> C_is_op op #: Nt.Ty_unknown)
+      | Some op -> C_is_op op#:Nt.Ty_unknown)
 
 (* TODO: Check nested tuple *)
 let to_typed_ids x =
@@ -107,11 +107,11 @@ let term_force_var e =
 let rec typed_raw_term_of_pattern pattern =
   match pattern.ppat_desc with
   | Ppat_tuple ps ->
-      (Tuple (List.map typed_raw_term_of_pattern ps)) #: Nt.Ty_unknown
-  | Ppat_var ident -> (Var ident.txt #: Nt.Ty_unknown) #: Nt.Ty_unknown
+      (Tuple (List.map typed_raw_term_of_pattern ps))#:Nt.Ty_unknown
+  | Ppat_var ident -> (Var ident.txt#:Nt.Ty_unknown)#:Nt.Ty_unknown
   | Ppat_constraint (ident, tp) ->
       let term = typed_raw_term_of_pattern ident in
-      term.x #: (Nt.core_type_to_t tp)
+      term.x#:(Nt.core_type_to_t tp)
   | Ppat_construct (c, args) -> (
       let c = longid_to_id c in
       match constructor_to_term_or_op c with
@@ -123,8 +123,8 @@ let rec typed_raw_term_of_pattern pattern =
             | Some args ->
                 de_tuple_term @@ typed_raw_term_of_pattern @@ snd args
           in
-          (AppOp (op, args)) #: Nt.Ty_unknown)
-  | Ppat_any -> (Var "_" #: Nt.Ty_unknown) #: Nt.Ty_unknown
+          (AppOp (op, args))#:Nt.Ty_unknown)
+  | Ppat_any -> (Var "_"#:Nt.Ty_unknown)#:Nt.Ty_unknown
   | _ ->
       Pprintast.pattern Format.std_formatter pattern;
       failwith "wrong pattern name, maybe untyped"
@@ -132,14 +132,16 @@ let rec typed_raw_term_of_pattern pattern =
 let typed_ids_of_pattern pattern =
   to_typed_ids @@ typed_raw_term_of_pattern pattern
 
+let monadic_operator = [ _bind; _fmap; _return ]
+
 let typed_raw_term_of_expr expr =
   let rec aux expr =
     match expr.pexp_desc with
-    | Pexp_tuple es -> (Tuple (List.map aux es)) #: Nt.Ty_unknown
+    | Pexp_tuple es -> (Tuple (List.map aux es))#:Nt.Ty_unknown
     | Pexp_constraint (expr, ty) ->
         (* let () = Printf.printf "Pexp_constraint: %s\n" (layout_ct ty) in *)
         update_ty (aux expr) (Nt.core_type_to_t ty)
-    | Pexp_ident id -> (Var (longid_to_id id) #: Nt.Ty_unknown) #: Nt.Ty_unknown
+    | Pexp_ident id -> (Var (longid_to_id id)#:Nt.Ty_unknown)#:Nt.Ty_unknown
     | Pexp_construct (c, args) -> (
         let args =
           match args with
@@ -151,8 +153,10 @@ let typed_raw_term_of_expr expr =
         let c = constructor_to_term_or_op @@ longid_to_id c in
         match c with
         | C_is_term tm -> tm
-        | C_is_op op -> (AppOp (op, args)) #: Nt.Ty_unknown)
-    | Pexp_constant _ -> (Const (expr_to_constant expr)) #: Nt.Ty_unknown
+        | C_is_op op ->
+            let () = Printf.printf "MK op: %s\n" (layout_op op.x) in
+            (AppOp (op, args))#:Nt.Ty_unknown)
+    | Pexp_constant _ -> (Const (expr_to_constant expr))#:Nt.Ty_unknown
     | Pexp_let (flag, vbs, e) ->
         List.fold_right
           (fun vb letbody ->
@@ -162,8 +166,7 @@ let typed_raw_term_of_expr expr =
                  lhs = typed_ids_of_pattern vb.pvb_pat;
                  rhs = aux vb.pvb_expr;
                  letbody;
-               })
-            #: Nt.Ty_unknown)
+               })#:Nt.Ty_unknown)
           vbs (aux e)
     | Pexp_apply (func, args) ->
         let args = List.map (fun x -> aux @@ snd x) args in
@@ -171,18 +174,21 @@ let typed_raw_term_of_expr expr =
         let res =
           match func.x with
           | Var f -> (
-              match string_to_op_opt f.x with
-              | Some op ->
-                  let op = op #: f.ty in
-                  AppOp (op, args)
-              | None -> App (func, args))
+              if
+                (* NOTE: Monad *)
+                List.exists (String.equal f.x) monadic_operator
+              then AppOp ((PrimOp f.x)#:f.ty, args)
+              else
+                match string_to_op_opt f.x with
+                | Some op -> AppOp (op#:f.ty, args)
+                | None -> App (func, args))
           | _ -> App (func, args)
         in
-        res #: Nt.Ty_unknown
+        res#:Nt.Ty_unknown
     | Pexp_ifthenelse (e1, e2, Some e3) ->
-        (Ifte (aux e1, aux e2, aux e3)) #: Nt.Ty_unknown
+        (Ifte (aux e1, aux e2, aux e3))#:Nt.Ty_unknown
     | Pexp_ifthenelse (e1, e2, None) ->
-        (Ifte (aux e1, aux e2, (Const U) #: Nt.unit_ty)) #: Nt.Ty_unknown
+        (Ifte (aux e1, aux e2, (Const U)#:Nt.unit_ty))#:Nt.Ty_unknown
     | Pexp_match (matched, match_cases) ->
         let match_cases =
           List.map
@@ -198,7 +204,7 @@ let typed_raw_term_of_expr expr =
               | _ -> _failatwith [%here] "?")
             match_cases
         in
-        (Match { matched = aux matched; match_cases }) #: Nt.Ty_unknown
+        (Match { matched = aux matched; match_cases })#:Nt.Ty_unknown
     | Pexp_fun (_, _, arg0, expr) ->
         let arg = typed_raw_term_of_pattern arg0 in
         let () =
@@ -211,18 +217,18 @@ let typed_raw_term_of_expr expr =
         in
         let lamarg =
           match arg.x with
-          | Var x -> x.x #: arg.ty
+          | Var x -> x.x#:arg.ty
           | _ ->
               let () = Printf.printf "%s\n" (layout_ arg0) in
               failwith "Syntax error: lambda function wrong argument"
         in
-        (Lam { lamarg; lambody = aux expr }) #: Nt.Ty_unknown
+        (Lam { lamarg; lambody = aux expr })#:Nt.Ty_unknown
         (* un-curry *)
     | Pexp_sequence (e1, e2) ->
         let lhs = [ { x = Rename.unique "unused"; ty = Nt.unit_ty } ] in
         let rhs = aux e1 in
         let letbody = aux e2 in
-        (Let { if_rec = false; lhs; rhs; letbody }) #: Nt.Ty_unknown
+        (Let { if_rec = false; lhs; rhs; letbody })#:Nt.Ty_unknown
     | _ ->
         raise
         @@ failwith
@@ -236,7 +242,7 @@ let raw_term_of_expr expr = (typed_raw_term_of_expr expr).x
 let typed_id_of_expr expr =
   let x = typed_raw_term_of_expr expr in
   match x.x with
-  | Var id -> id #: x.ty
+  | Var id -> id#:x.ty
   | _ ->
       _failatwith [%here] (spf "die: %s" (Pprintast.string_of_expression expr))
 
@@ -248,8 +254,6 @@ let layout_typed_raw_term x =
 
 let layout_omit_type x = layout_raw_term @@ (typed_raw_term_of_expr x).x
 let layout_typed_term x = layout_typed_raw_term @@ denormalize_term x
-let layout_term x = layout_typed_raw_term @@ denormalize_term x #: Nt.Ty_unknown
+let layout_term x = layout_typed_raw_term @@ denormalize_term x#:Nt.Ty_unknown
 let layout_typed_value x = layout_typed_raw_term @@ denormalize_value x
-
-let layout_value x =
-  layout_typed_raw_term @@ denormalize_value x #: Nt.Ty_unknown
+let layout_value x = layout_typed_raw_term @@ denormalize_value x#:Nt.Ty_unknown

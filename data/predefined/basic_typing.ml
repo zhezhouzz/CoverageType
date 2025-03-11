@@ -1,4 +1,5 @@
-(** The datatype constructor should use the lower case instead of the first char *)
+(** The datatype constructor should use the lower case instead of the first char
+*)
 type unit = TT
 
 type bool = True | False
@@ -32,6 +33,11 @@ type stlc_term =
   | Stlc_abs of stlc_ty * stlc_term
 
 type stlc_tyctx = Stlc_tyctx_nil | Stlc_tyctx_cons of stlc_ty * stlc_tyctx
+
+(** Monad *)
+
+val bind : (unit -> 'a) -> ('a -> unit -> 'b) -> unit -> 'b
+val fmap : ('a -> 'b) -> (unit -> 'a) -> unit -> 'b
 
 (** Arithmatic operators *)
 
@@ -76,6 +82,7 @@ val tl : 'a list -> 'a list -> bool
 val list_mem : 'a list -> 'a -> bool
 val sorted : 'a list -> bool
 val uniq : 'a list -> bool
+val listLen : 'a list -> int
 
 (* for tree *)
 val depth : 'a tree -> int -> bool
@@ -87,6 +94,7 @@ val tree_mem : 'a tree -> 'a -> bool
 val bst : 'a tree -> bool
 val heap : 'a tree -> bool
 val complete : 'a tree -> bool
+val treeNumNode : 'a tree -> int
 
 (* for rbtree *)
 val num_black : 'a rbtree -> int -> bool
