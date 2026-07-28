@@ -1,2 +1,6 @@
 (library
-  (name test_CoverageType))
+  (name test_CoverageType)
+  (libraries auxtyping preprocess typing)
+  (modules nonempty)
+  (inline_tests)
+  (preprocess (pps ppx_inline_test)))
