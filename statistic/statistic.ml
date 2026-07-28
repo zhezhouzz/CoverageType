@@ -3,6 +3,8 @@ open Language
 open Zutils
 open Zdatatype
 
+type 'a ht_result = Value of 'a | Ignored | Missing
+
 type stat = {
   function_name : string;
   branchs : int;
@@ -25,10 +27,22 @@ type stat_list = stat list [@@deriving eq, ord, show, sexp, yojson]
 
 let _stat_tab = Hashtbl.create 20
 
-let update_stat name f =
+let find_stat name =
   match Hashtbl.find_opt _stat_tab name with
-  | Some stat -> Hashtbl.replace _stat_tab name (f stat)
-  | None -> _die [%here]
+  | Some (Some stat) -> Value stat
+  | Some None -> Ignored
+  | None -> Missing
+
+let insert_stat name stat =
+  match find_stat name with
+  | Missing -> Hashtbl.add _stat_tab name stat
+  | _ -> _die_with [%here] (spf "creating duplicate stat %s" name)
+
+let update_stat name f =
+  match find_stat name with
+  | Value stat -> Hashtbl.replace _stat_tab name (Some (f stat))
+  | Ignored -> ()
+  | Missing -> _die [%here]
 
 let stat_update_rty (name, (num_qt, num_qpred)) =
   update_stat name (fun stat -> { stat with num_qt; num_qpred })
@@ -67,6 +81,7 @@ let calculate_stat stat =
 let store_stat filename =
   let j =
     stat_list_to_yojson @@ List.map calculate_stat @@ List.of_seq
+    @@ Seq.filter_map Fun.id
     @@ Hashtbl.to_seq_values _stat_tab
   in
   Yojson.Safe.to_file filename j
@@ -94,9 +109,7 @@ let create_stat function_name (imp : (Nt.t, Nt.t term) typed) =
       avg_time = 0.0;
     }
   in
-  match Hashtbl.find_opt _stat_tab function_name with
-  | None -> Hashtbl.add _stat_tab function_name stat
-  | Some _ -> _die [%here]
+  insert_stat function_name (Some stat)
 
 let create_subtyping_stat () =
   let function_name = "subtyping" in
@@ -119,8 +132,7 @@ let create_subtyping_stat () =
       avg_time = 0.0;
     }
   in
-  match Hashtbl.find_opt _stat_tab function_name with
-  | None -> Hashtbl.add _stat_tab function_name stat
-  | Some _ -> _die [%here]
+  insert_stat function_name (Some stat)
 
+let create_ignored_stat name = insert_stat name None
 let clear () = Hashtbl.clear _stat_tab
