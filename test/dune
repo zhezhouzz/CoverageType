@@ -3,4 +3,4 @@
   (libraries auxtyping preprocess typing)
   (modules nonempty)
   (inline_tests)
-  (preprocess (pps ppx_inline_test)))
+  (preprocess (pps ppx_here ppx_inline_test)))
