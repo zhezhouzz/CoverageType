@@ -22,8 +22,6 @@ let smart_dependent_forall (x, { nty; phi }) query =
 
 let smart_dependent_exists (x, { nty; phi }) query =
   let phi = subst_prop_instance default_v (AVar x#:nty) phi in
-  (* let query = fresh_name_prop query in *)
-  (* Exists { qv = x#:nty; body = smart_add_to phi query } *)
   smart_exists_phi (x#:nty, phi) query
 
 let report_unclosed loc query =
@@ -156,7 +154,6 @@ let non_emptiness_cty rctx cty =
   if lazy_emptiness_check then true
   else
     let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list rctx.rty_ctx) in
-    let underctx = underctx @ [ (default_v, mk_top_cty cty.nty) ] in
     let () =
       _log_auxtyping @@ fun _ ->
       let overctx =
@@ -174,28 +171,25 @@ let non_emptiness_cty rctx cty =
         "left-hand-side type should be closed under over + under ctx"
         (is_close_cty (List.map fst (overctx @ underctx)) cty)
     in
-    let overctx = (default_v, mk_top_cty cty.nty) :: overctx in
+    let { nty; phi } = cty in
     let query =
-      List.fold_right smart_dependent_exists (overctx @ underctx) cty.phi
+      smart_implies phi Prop.mk_false
+      |> smart_dependent_forall (default_v, mk_top_cty nty)
+      |> List.fold_right smart_dependent_exists underctx
+      |> List.fold_right smart_dependent_forall overctx
     in
     let () = Statistic.stat_query_formula (rctx.task_name, query) in
     let time, res =
       clock (fun () ->
           let () =
             _log_auxtyping @@ fun _ ->
-            Printf.printf "check sat: %s\n" (layout_prop_ query)
+            Printf.printf "check valid: %s\n" (layout_prop_ query)
           in
           let () =
             _log_auxtyping @@ fun _ ->
             Printf.printf "let[@axiom] tmp = %s\n" (layout_prop__raw query)
           in
-          Prover.check_sat (Some rctx.task_name, query))
+          Prover.check_valid (Some rctx.task_name, query))
     in
     let () = Statistic.stat_query_time (rctx.task_name, time) in
-    let res =
-      match res with SmtUnsat -> false | SmtSat _ -> true | Timeout -> true
-      (* NOTE: we cannot decide if this control flow is unreachable, thus continue *)
-    in
-    (* let () = if List.length underctx > 1 then _die [%here] in *)
-    (* let () = if not res then _die [%here] in *)
-    res
+    not res
