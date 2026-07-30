@@ -76,3 +76,26 @@ let%test "[v:bool | v == (size == 0)]" =
   in
   let rctx = Rctx.add_var rctx "size"#:size_rty in
   is_nonempty_rty test_name rctx goal_rty
+
+let%test "[v:bool | v == (x > 0)]" =
+  let open Nt in
+  let test_name = "test" in
+  let rctx = Rctx.emp test_name [] [] in
+  let x_rty =
+    let phi = Lit (AC (B true))#:bool_ty in
+    RtyBase { ou = Under; cty = { nty = int_ty; phi } }
+  in
+  let goal_rty =
+    let v_bool = (AVar default_v#:bool_ty)#:bool_ty in
+    let x = (AVar "x"#:int_ty)#:int_ty in
+    let int_int_bool_ty = mk_long_arr [ int_ty; int_ty; bool_ty ] in
+    let bool_bool_bool_ty = mk_long_arr [ bool_ty; bool_ty; bool_ty ] in
+    let gr_int = ">"#:int_int_bool_ty in
+    let eq_bool = "=="#:bool_bool_bool_ty in
+    let zero = (AC (I 0))#:int_ty in
+    let inner_eq = (AAppOp (gr_int, [ x; zero ]))#:bool_ty in
+    let phi = Lit (AAppOp (eq_bool, [ v_bool; inner_eq ]))#:bool_ty in
+    RtyBase { ou = Under; cty = { nty = bool_ty; phi } }
+  in
+  let rctx = Rctx.add_var rctx "x"#:x_rty in
+  is_nonempty_rty test_name rctx goal_rty

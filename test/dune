@@ -2,5 +2,7 @@
   (name test_CoverageType)
   (libraries auxtyping preprocess typing)
   (modules nonempty)
-  (inline_tests)
+  (inline_tests
+    (deps (glob_files_rec ../../data/**)
+          (file ../meta-config.json)))
   (preprocess (pps ppx_here ppx_inline_test)))
