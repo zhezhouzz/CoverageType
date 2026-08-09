@@ -90,20 +90,22 @@ let is_free_rty x rty = List.exists (String.equal x) @@ fv_rty_id rty
 let is_close_rty dom rty =
   List.for_all (fun x -> List.exists (String.equal x) dom) @@ fv_rty_id rty
 
-let check_wf_rty (tau : 't rty) =
-  let rec aux tau =
-    match tau with
-    | RtyBase _ -> ()
-    | RtyArr { argrty; arg; retty } -> (
-        match argrty with
-        | RtyBase { ou = Over; _ } -> ()
-        | _ ->
-            if is_free_rty arg retty then
-              _die_with [%here] "Rty is not well-fromed")
-    | RtyPolyType { rty; _ } -> aux rty
-    | RtyPolyPred { rty; _ } -> aux rty
-  in
-  aux tau
+let rec check_syntactically_wf_rty = function
+  | RtyBase _ -> ()
+  | RtyArr { argrty; arg; retty } -> (
+      match argrty with
+      | RtyBase { ou = Over; _ } -> check_syntactically_wf_rty retty
+      | RtyArr _ as funcrty ->
+          _assert [%here]
+            "rty not well-formed: function arg cannot be free in return type"
+            (not (is_free_rty arg retty));
+          check_syntactically_wf_rty funcrty;
+          check_syntactically_wf_rty retty
+      | _ ->
+          _die_with [%here]
+            "rty not well-formed: function arg must be over or arrow type")
+  | RtyPolyType { rty; _ } -> check_syntactically_wf_rty rty
+  | RtyPolyPred { rty; _ } -> check_syntactically_wf_rty rty
 
 let constant_to_value c = (VConst c)#:(Prop.constant_to_nt c)
 let value_to_term v = (CVal v)#:v.ty

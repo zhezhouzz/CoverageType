@@ -52,7 +52,7 @@ let constraint_rty_type_check (ctx : t ctx) (bc : BC.bc) (rty : t rty) =
 
 let rty_type_check (ctx : t ctx) (poly_vars : string list) (rty : t rty) : t rty
     =
-  let () = check_wf_rty rty in
+  let () = check_syntactically_wf_rty rty in
   let () =
     _log @@ fun _ ->
     pprint_ctx Nt.layout ctx;
