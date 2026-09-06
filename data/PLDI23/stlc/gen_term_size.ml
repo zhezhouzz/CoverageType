@@ -2,13 +2,13 @@ val gen_type : unit -> stlc_ty
 val gen_term_no_app : stlc_ty list -> stlc_ty -> stlc_term
 
 let[@library] gen_type =
-  let s = (true : [%v: unit]) [@over] in
-  (true : [%v: stlc_ty]) [@under]
+  let s = ((true : [%v: unit]) [@over]) in
+  ((true : [%v: stlc_ty]) [@under])
 
 let[@library] gen_term_no_app =
-  let gamma = (true : [%v: stlc_ty list]) [@over] in
-  let tau = (true : [%v: stlc_ty]) [@over] in
-  (typing gamma v tau && num_app v == 0 : [%v: stlc_term]) [@under]
+  let gamma = ((true : [%v: stlc_ty list]) [@over]) in
+  let tau = ((true : [%v: stlc_ty]) [@over]) in
+  ((typing gamma v tau && num_app v == 0 : [%v: stlc_term]) [@under])
 
 let rec gen_term_size (num_arr_tau : int) (num : int) (gamma : stlc_ty list)
     (tau : stlc_ty) : stlc_term =
@@ -39,8 +39,8 @@ let rec gen_term_size (num_arr_tau : int) (num : int) (gamma : stlc_ty list)
         Stlc_abs (tau1, body)
 
 let[@assert] gen_term_size =
-  let num_arr_tau = (v >= 0 : [%v: int]) [@over] in
-  let num = (v >= 0 : [%v: int]) [@over] in
-  let gamma = (true : [%v: stlc_ty list]) [@over] in
-  let tau = (num_arr v == num_arr_tau : [%v: stlc_ty]) [@over] in
-  (typing gamma v tau && num_app v == num : [%v: stlc_term]) [@under]
+  let num_arr_tau = ((v >= 0 : [%v: int]) [@over]) in
+  let num = ((v >= 0 : [%v: int]) [@over]) in
+  let gamma = ((true : [%v: stlc_ty list]) [@over]) in
+  let tau = ((num_arr v == num_arr_tau : [%v: stlc_ty]) [@over]) in
+  ((typing gamma v tau && num_app v == num : [%v: stlc_term]) [@under])

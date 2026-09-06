@@ -13,5 +13,5 @@ let rec sorted_list_gen (size : int) : int list =
 (*   (lenF v == s : [%v: int list]) [@under] *)
 
 let[@assert] sorted_list_gen =
-  let s = (0 <= v : [%v: int]) [@over] in
-  (list_len v == s && sorted v : [%v: int list]) [@under]
+  let s = ((0 <= v : [%v: int]) [@over]) in
+  ((list_len v == s && sorted v : [%v: int list]) [@under])
