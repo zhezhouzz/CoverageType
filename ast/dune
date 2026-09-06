@@ -12,13 +12,16 @@
  (public_name CoverageType.ast)
  (name ast)
  (wrapped true)
- (modules
-   parseTree
-   fv
-   subst
-   map
-   astHelper
-   ast
- )
- (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv ppx_inline_test ppx_assert ppx_deriving.show ppx_deriving.eq ppx_deriving.ord ppx_here))
+ (modules parseTree fv subst map astHelper ast)
+ (preprocess
+  (pps
+   ppx_optcomp
+   ppx_compare
+   ppx_sexp_conv
+   ppx_inline_test
+   ppx_assert
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_deriving.ord
+   ppx_here))
  (libraries zutils spectrum))

@@ -6,9 +6,6 @@
 (executable
  (name main)
  (modules main)
- (libraries core core_unix.command_unix
-            language
-            preprocess
-            typing)
+ (libraries core core_unix.command_unix language preprocess typing)
  (preprocess
   (pps ppx_jane)))

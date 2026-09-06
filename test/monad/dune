@@ -1,8 +1,10 @@
 (library
-  (name monad)
-  (inline_tests
-    (deps (glob_files_rec ../../data/**)
-          (file ../meta-config.json)))
-  (libraries auxtest)
-  (modules monad)
-  (preprocess (pps ppx_expect)))
+ (name monad)
+ (inline_tests
+  (deps
+   (glob_files_rec ../../data/**)
+   (file ../meta-config.json)))
+ (libraries auxtest)
+ (modules monad)
+ (preprocess
+  (pps ppx_expect)))

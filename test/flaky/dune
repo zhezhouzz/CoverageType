@@ -1,8 +1,10 @@
 (library
-  (name flaky)
-  (inline_tests
-    (deps (glob_files_rec ../../data/**)
-          (file ../meta-config.json)))
-  (libraries auxtest)
-  (modules flaky)
-  (preprocess (pps ppx_expect)))
+ (name flaky)
+ (inline_tests
+  (deps
+   (glob_files_rec ../../data/**)
+   (file ../meta-config.json)))
+ (libraries auxtest)
+ (modules flaky)
+ (preprocess
+  (pps ppx_expect)))

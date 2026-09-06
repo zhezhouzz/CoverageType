@@ -2,8 +2,17 @@
  (public_name CoverageType.statistic)
  (name statistic)
  (wrapped true)
- (modules
-   statistic
- )
- (preprocess (pps ppx_optcomp ppx_compare ppx_sexp_conv ppx_inline_test ppx_assert ppx_deriving.show ppx_deriving.eq ppx_deriving.ord ppx_here ppx_deriving_yojson))
+ (modules statistic)
+ (preprocess
+  (pps
+   ppx_optcomp
+   ppx_compare
+   ppx_sexp_conv
+   ppx_inline_test
+   ppx_assert
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_deriving.ord
+   ppx_here
+   ppx_deriving_yojson))
  (libraries zutils spectrum language))
