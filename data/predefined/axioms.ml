@@ -204,7 +204,7 @@ let[@axiom] tree_depth_geq_0 (l : int tree) (n : int) =
 
 let[@axiom] tree_ch_depth_minus_1 (l : int tree) (l1 : int tree) (n : int)
     (n1 : int) =
-  (lch l l1 || rch l l1)#==>(depth l1 == depth l - 1)
+  (lch l l1 || rch l l1)#==>(depth l1 <= depth l - 1)
 
 (** tree_mem *)
 
