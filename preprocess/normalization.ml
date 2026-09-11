@@ -6,7 +6,6 @@ type 't cont = ('t, 't term) typed -> ('t, 't term) typed
 type 't vcont = ('t, 't value) typed -> ('t, 't term) typed
 type 't vconts = ('t, 't value) typed list -> ('t, 't term) typed
 
-let _log = Myconfig._log "normalization"
 let new_x () = Rename.unique_var "_x"
 let construct_lete lhs rhs body = (CLetE { lhs; rhs; body })#:body.ty
 let var_to_v x = (VVar x)#:x.ty
@@ -32,7 +31,7 @@ let decurry (f, args) =
 let rec normalize_term (tm : ('t, 't raw_term) typed) : ('t, 't term) typed =
   let res = normalize_get_comp (fun x -> x) tm in
   let () =
-    _log @@ fun () ->
+    TypecheckerLog.normalization @@ fun () ->
     Printf.printf "[normalize]\n%s\n\n%s\n" (layout_typed_raw_term tm)
       (layout_typed_term res)
   in
@@ -152,7 +151,7 @@ and normalize_get_comp (k : 't cont) (expr : ('t, 't raw_term) typed) :
           matched
   in
   let () =
-    _log @@ fun () ->
+    TypecheckerLog.normalization @@ fun () ->
     Printf.printf "[normalize]\nk: %s\nexpr: %s\n" (layout_cont expr.ty k)
       (layout_typed_raw_term expr)
   in

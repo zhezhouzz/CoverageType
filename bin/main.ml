@@ -44,11 +44,11 @@ let one_param_file message f =
       Command.Let_syntax.(
         let%map_open config_file =
           flag "config"
-            (optional_with_default Myconfig.default_meta_config_path
-               regular_file)
+            (optional_with_default "meta-config.json" regular_file)
             ~doc:"config file path"
         and source_file = anon ("source_code_file" %: regular_file) in
-        let () = Myconfig.meta_config_path := config_file in
+        let root = Yojson.Safe.from_file config_file in
+        TypecheckerConfig.bootstrap root;
         f source_file)
   in
   (message, cmd)

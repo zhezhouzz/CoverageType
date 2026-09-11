@@ -3,19 +3,17 @@ open Zutils
 open Bidirect
 open Zdatatype
 
-let _log = Myconfig._log_result
-
 let _task_info name rty =
-  _log @@ fun _ ->
+  TypecheckerLog.result @@ fun _ ->
   Pp.printf "@{<bold>Type Check %s:@}\n" name;
   Pp.printf "@{<bold>check against with:@} %s\n" (layout_rty rty)
 
 let _task_succ name =
-  _log @@ fun _ ->
+  TypecheckerLog.result @@ fun _ ->
   Pp.printf "@{<bold>@{<yellow>Task %s, type check succeeded@}@}\n" name
 
 let _task_fail name =
-  _log @@ fun _ ->
+  TypecheckerLog.result @@ fun _ ->
   Pp.printf "@{<bold>@{<red>Task %s, type check failed@}@}\n" name
 
 let mk_imp_m bctx items =
@@ -55,7 +53,7 @@ let item_check bctx inv_m imp_m (name, rty) =
       imp_m name
   in
   let () =
-    _log @@ fun _ ->
+    TypecheckerLog.result @@ fun _ ->
     Pp.printf "@{<bold>imp_m(%s)@}\n%s\n" name (layout_typed_term imp)
   in
   let () = Statistic.create_stat name imp in
@@ -92,13 +90,14 @@ let struc_check bctx items =
       (bctx, [], []) tasks
   in
   let () =
-    _log @@ fun _ ->
+    TypecheckerLog.result @@ fun _ ->
     Pp.printf "@{<bold>Summary (total %i tasks):@}\n" (List.length tasks)
   in
   let () =
     match failed with
     | [] ->
-        _log @@ fun _ -> Pp.printf "@{<bold>@{<yellow>All tasks succeeded@}@}\n"
-    | _ -> _log @@ fun _ -> List.iter _task_fail failed
+        TypecheckerLog.result @@ fun _ ->
+        Pp.printf "@{<bold>@{<yellow>All tasks succeeded@}@}\n"
+    | _ -> TypecheckerLog.result @@ fun _ -> List.iter _task_fail failed
   in
   (Some bctx, passed, failed)

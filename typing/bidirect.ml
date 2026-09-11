@@ -36,17 +36,17 @@ let type_check_group (bctx : built_in_ctx) =
           let () = if String.equal id.x "None" then _die [%here] in
           let rty = _id_type_infer [%here] rctx id in
           let res = Some (VVar id.x#:rty)#:rty in
-          if Myconfig.get_bool_option "show_type_infer_variable_judgement" then
+          if ZUtilsConfig.get_show_type_infer_variable_judgement () then
             pprint_typing_infer_value_after rctx (v, res);
           res
       | VConst U ->
           let res = Some (VConst U)#:(mk_top_underrty Nt.unit_ty) in
-          if Myconfig.get_bool_option "show_type_infer_constant_judgement" then
+          if ZUtilsConfig.get_show_type_infer_constant_judgement () then
             pprint_typing_infer_value_after rctx (v, res);
           res
       | VConst c ->
           let res = Some (VConst c)#:(mk_eq_c_underrty c) in
-          if Myconfig.get_bool_option "show_type_infer_constant_judgement" then
+          if ZUtilsConfig.get_show_type_infer_constant_judgement () then
             pprint_typing_infer_value_after rctx (v, res);
           res
       | VTuple vs ->
@@ -114,7 +114,7 @@ let type_check_group (bctx : built_in_ctx) =
                 (spf "inductive invaraint of %s is missing" fixname.x)
           | Some rty ->
               let () =
-                _log @@ fun _ ->
+                TypecheckerLog.typing @@ fun _ ->
                 Pp.printf "@{<bold>inv:@} %s\n" (layout_rty rty)
               in
               value_type_check rctx v rty)

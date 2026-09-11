@@ -3,10 +3,8 @@ open Zutils
 open Subcty
 (* open Myconfig *)
 
-let _log = Myconfig._log_typing
-
 let rec sub_rty rctx (rty1, rty2) =
-  ( _log @@ fun _ ->
+  ( TypecheckerLog.typing @@ fun _ ->
     pprint_subtyping
       (fun () ->
         Typectx.pprint_ctx layout_rty rctx.rty_ctx;

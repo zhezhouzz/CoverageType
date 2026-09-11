@@ -6,8 +6,6 @@ open Zdatatype
 
 type t = Nt.t
 
-let _log = Myconfig._log_preprocess
-
 let constraint_cty_type_check (ctx : t ctx) (bc : BC.bc) ({ phi; nty } : t cty)
     =
   let ctx = add_to_right ctx default_v#:nty in
@@ -16,7 +14,10 @@ let constraint_cty_type_check (ctx : t ctx) (bc : BC.bc) ({ phi; nty } : t cty)
 
 let constraint_rty_type_check (ctx : t ctx) (bc : BC.bc) (rty : t rty) =
   let rec aux ctx bc rty =
-    let () = _log @@ fun _ -> Printf.printf "rty: %s\n" (layout_rty rty) in
+    let () =
+      TypecheckerLog.preprocess @@ fun _ ->
+      Printf.printf "rty: %s\n" (layout_rty rty)
+    in
     match rty with
     | RtyBase { ou; cty } ->
         let bc, cty = constraint_cty_type_check ctx bc cty in
@@ -43,7 +44,7 @@ let constraint_rty_type_check (ctx : t ctx) (bc : BC.bc) (rty : t rty) =
 (* let cty_type_check (ctx : t ctx) (poly_vars : string list) *)
 (*     ({ phi; nty } : t cty) : t cty = *)
 (*   let () = *)
-(*     _log @@ fun _ -> *)
+(*     TypecheckerLog.preprocess @@ fun _ -> *)
 (*     pprint_ctx Nt.layout ctx; *)
 (*     print_newline (); *)
 (*     Printf.printf "cty: %s\n" (layout_cty { phi; nty }) *)
@@ -54,7 +55,7 @@ let rty_type_check (ctx : t ctx) (poly_vars : string list) (rty : t rty) : t rty
     =
   let () = check_syntactically_wf_rty rty in
   let () =
-    _log @@ fun _ ->
+    TypecheckerLog.preprocess @@ fun _ ->
     pprint_ctx Nt.layout ctx;
     print_newline ();
     Pp.printf "@{<bold>rty task@}: %s\n" (layout_rty rty)
@@ -79,7 +80,8 @@ let rec constraint_term_type_infer (ctx : t ctx) (bc : BC.bc) (e : t raw_term) =
   | Var id ->
       let bc, id = constraint_id_type_check ctx bc id in
       let () =
-        _log @@ fun _ -> Printf.printf "id: %s : %s\n" id.x (Nt.layout id.ty)
+        TypecheckerLog.preprocess @@ fun _ ->
+        Printf.printf "id: %s : %s\n" id.x (Nt.layout id.ty)
       in
       (bc, (Var id)#:id.ty)
   | Tuple es ->
@@ -109,7 +111,7 @@ let rec constraint_term_type_infer (ctx : t ctx) (bc : BC.bc) (e : t raw_term) =
   | AppOp (op, args) ->
       let bc, op = constraint_op_type_check ctx bc op in
       let () =
-        _log @@ fun () ->
+        TypecheckerLog.preprocess @@ fun () ->
         Printf.printf "op: %s : %s\n" (Prop.layout_op op.x) (Nt.layout op.ty)
       in
       let bc, args = constraint_terms_type_check ctx bc args in
@@ -225,14 +227,14 @@ let raw_term_type_check ctx polyvars term =
   match solution with
   | None ->
       let () =
-        _log @@ fun _ ->
+        TypecheckerLog.preprocess @@ fun _ ->
         Pp.printf "@{<bold>Before subst:@}\n%s\n" (layout_typed_raw_term term)
       in
       _die_with [%here] "raw term normal type error"
   | Some sol ->
       let res = typed_map_raw_term (Normalty.msubst_nt sol) term in
       let () =
-        _log @@ fun _ ->
+        TypecheckerLog.preprocess @@ fun _ ->
         Pp.printf "@{<bold>Before subst:@}\n%s\n" (layout_typed_raw_term term);
         Pp.printf "@{<bold>Solution:@}\n%s\n"
           (List.split_by_comma (fun (x, ty) -> spf "%s -> %s" x (Nt.layout ty))

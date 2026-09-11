@@ -2,8 +2,6 @@ open Language
 open Zutils
 open Zdatatype
 
-let _log = Myconfig._log "inline"
-
 type constructor_type = string list * Nt.nt
 
 let layout_constructor_type x =
@@ -61,7 +59,7 @@ let item_inline decls items =
   let inline nt =
     let res = List.fold_right inline_record decls nt in
     let () =
-      _log @@ fun () ->
+      TypecheckerLog.inline @@ fun () ->
       Printf.printf "decls %s \n" (List.split_by_comma _get_x decls);
       Printf.printf "inline %s ==> %s\n" (Nt.layout nt) (Nt.layout res)
     in
@@ -109,7 +107,7 @@ let item_inline decls items =
 
 (* let%test "inline_alias" = *)
 (*   let () = *)
-(*     Myconfig.meta_config_path := *)
+(*     ZUtilsConfig.meta_config_path := *)
 (*       "/Users/zhezzhou/workspace/CoverageType/meta-config.json" *)
 (*   in *)
 (*   let test_file = *)

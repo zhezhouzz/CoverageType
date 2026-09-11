@@ -12,13 +12,13 @@ let pprint_basic_typing ctx (e, ty) () =
 let pprint_typing_infer ctx (e, ty) () =
   ctx ();
   Pp.printf "⊢ @{<purple>%s@}\n"
-    (short_str (Myconfig.get_max_printing_size ()) e);
+    (short_str (ZUtilsConfig.get_max_printing_size ()) e);
   Pp.printf "⇨ @{<teal>%s@}\n\n" ty
 
 let pprint_typing_check ctx (e, ty) () =
   ctx ();
   Pp.printf "⊢ @{<purple>%s@}\n"
-    (short_str (Myconfig.get_max_printing_size ()) e);
+    (short_str (ZUtilsConfig.get_max_printing_size ()) e);
   Pp.printf "⇦ @{<teal>%s@}\n\n" ty
 
 let pprint_typing_app fname ctx (args, r) () =
