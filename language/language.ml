@@ -48,12 +48,12 @@ let instantiate_rty_by_nty loc rty nty =
         (layout_nt nty);
       _die loc
   | Some sol ->
-      Myconfig._log "instantiation" (fun () ->
+      TypecheckerLog.instantiation (fun () ->
           Printf.printf "solution\n%s\n"
             (List.split_by_comma (fun (x, ty) ->
                  spf "%s := %s" x (layout_nt ty))
             @@ StrMap.to_kv_list sol));
       let res = map_rty (msubst_nt sol) rty in
-      Myconfig._log "instantiation" (fun () ->
+      TypecheckerLog.instantiation (fun () ->
           Printf.printf "instantiated %s\n" (layout_rty res));
       (sol, construct_poly_rty (pt, res))

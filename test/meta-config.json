@@ -1,71 +1,15 @@
 // for testing purposes
 {
-    "mode": [
-        "Debug"
-    ],
-    "max_printing_size": 300,
-    "log_tags": [
-        // "syn",
-        // "eval",
-        // "ntypecheck",
-        // "plan",
-        // "parsing",
-        // "queries",
-        // "model",
-        // "z3encode",
-        // "axiom",
-        // "unification",
-        // "instantiateRty",
-        // "auxtyping",
-        // "simplProp",
-        // "preprocess",
-        // "typing",
-        // "result",
-        // "desym_mapping",
-        // "desymbolic",
-        // "never-use"
-    ],
-    "bool_options": [
-        ["if_sort_record", true],
-        [
-            "show_type_infer_pre_judgement",
-            false
-        ],
-        [
-            "show_type_infer_constant_judgement",
-            false
-        ],
-        [
-            "show_type_infer_variable_judgement",
-            false
-        ],
-        [
-            "show_var_type_in_prop",
-            false
-        ],
-        [
-            "show_var_type_in_lit",
-            false
-        ],
-        [
-            "show_var_type_in_term",
-            true
-        ],
-        [
-            "instantiate_poly_type_var_in_smt",
-            false
-        ],
-        [
-            "show_record_type_feilds",
-            false
-        ]
-    ],
-    "prover_timeout_bound": 10000,
-    "prim_path": {
-        "predefined_path": "data/predefined",
-        "axioms_path": "",
-        "templates_path": "",
-        "p_header_template_path": "synRuntime/plang/header_template.funcp",
-        "p_client_template_path": "synRuntime/plang/client_template.funcp"
+    "zutils": {
+        "log_tags": [],
+        "prover_timeout_bound": 10000,
+        "pred_extension_rules": [["hd", ["list_mem"]]]
+    },
+    "typechecker": {
+        "prim_path": {
+            "normal_typing": "data/predefined/normal_typing.ml",
+            "coverage_typing": "data/predefined/coverage_typing.ml",
+            "axioms": "data/predefined/axioms.ml"
+        }
     }
 }

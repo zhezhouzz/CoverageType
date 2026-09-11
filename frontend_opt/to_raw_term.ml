@@ -10,7 +10,7 @@ open Sugar
 open Common
 
 let typed_to_expr f expr =
-  if Myconfig.get_bool_option "show_var_type_in_term" then
+  if ZUtilsConfig.get_show_var_type_in_term () then
     match expr.ty with
     | Nt.Ty_unknown -> f expr.x
     | _ ->

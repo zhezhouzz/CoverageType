@@ -6,6 +6,13 @@
 (executable
  (name main)
  (modules main)
- (libraries core core_unix.command_unix language preprocess typing)
+ (libraries
+  core
+  core_unix.command_unix
+  yojson
+  language
+  preprocess
+  typing
+  CoverageType.typechecker_config)
  (preprocess
   (pps ppx_jane)))

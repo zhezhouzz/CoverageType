@@ -2,5 +2,5 @@
  (public_name CoverageType.test.auxtest)
  (name auxtest)
  (wrapped true)
- (libraries preprocess typing)
+ (libraries yojson preprocess typing CoverageType.typechecker_config)
  (modules auxtest definitions))

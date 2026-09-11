@@ -4,7 +4,6 @@ open Sugar
 open Typectx
 open Auxtyping
 
-let _log = Myconfig._log_typing
 let _decreasing = "decreasing"
 
 let mk_self_wf_dec x =
@@ -52,7 +51,7 @@ module Rctx = struct
   (*   let* ctx = subtract_opt (equal_rty Nt.equal_nt) ctx1 ctx2 in *)
   (*   let gvars, vars = map2 Typectx.ctx_to_list @@ to_ctx_g_v_pair ctx in *)
   (*   let _ = *)
-  (*     _log @@ fun () -> *)
+  (*     TypecheckerLog.typing @@ fun () -> *)
   (*     Pp.printf "exists [%s], [%s] into %s\n" (layout_rtyed_vars gvars) *)
   (*       (layout_rtyed_vars vars) (layout_rty rty) *)
   (*   in *)
@@ -62,7 +61,7 @@ module Rctx = struct
     _assert [%here] "die"
       (List.equal String.equal rctx1.tyvar_ctx rctx2.tyvar_ctx);
     (* let _ = *)
-    (*   _log @@ fun () -> *)
+    (*   TypecheckerLog.typing @@ fun () -> *)
     (*   Pp.printf "%s\n - \n%s\n" *)
     (*     (Typectx.layout_ctx layout_rty rctx1.rty_ctx) *)
     (*     (Typectx.layout_ctx layout_rty rctx2.rty_ctx) *)
@@ -71,7 +70,7 @@ module Rctx = struct
       subtract_opt (equal_rty Nt.equal_nt) rctx1.rty_ctx rctx2.rty_ctx
     in
     (* let _ = *)
-    (*   _log @@ fun () -> *)
+    (*   TypecheckerLog.typing @@ fun () -> *)
     (*   Pp.printf "exists [%s] into %s\n" (layout_rtyed_vars vars) *)
     (*     (layout_rty rty) *)
     (* in *)
@@ -97,53 +96,59 @@ end
 open Rctx
 
 let _warinning_subtyping_error loc (rty1, rty2) =
-  _log @@ fun _ ->
+  TypecheckerLog.typing @@ fun _ ->
   Pp.printf "@{<bold>Type Error at %s:@} %s <: %s\n" (pos_to_string loc)
     (layout_rty rty1) (layout_rty rty2)
 
 let _warinning_nonemptiness_error loc rty1 =
-  _log @@ fun _ ->
+  TypecheckerLog.typing @@ fun _ ->
   Pp.printf "@{<bold>Type Error at %s:@} %s is empty type\n" (pos_to_string loc)
     (layout_rty rty1)
 
 let _warinning_typing_error loc (str, rty) =
-  _log @@ fun _ ->
+  TypecheckerLog.typing @@ fun _ ->
   Pp.printf "@{<bold>Type Error at %s:@} %s : %s\n" (pos_to_string loc) str
     (layout_rty rty)
 
 let pprint_typing_check_term rctx (e, ty) =
-  _log @@ pprint_typing_check (pprint rctx) (layout_typed_term e, layout_rty ty)
+  TypecheckerLog.typing
+  @@ pprint_typing_check (pprint rctx) (layout_typed_term e, layout_rty ty)
 
 let pprint_typing_infer_term_before rctx e =
-  if Myconfig.get_bool_option "show_type_infer_pre_judgement" then
-    _log @@ pprint_typing_infer (pprint rctx) (layout_typed_term e, "??")
+  if ZUtilsConfig.get_show_type_infer_pre_judgement () then
+    TypecheckerLog.typing
+    @@ pprint_typing_infer (pprint rctx) (layout_typed_term e, "??")
   else ()
 
 let layout_rty_opt res =
   match res with Some res -> layout_rty res | None -> "None"
 
 let pprint_typing_infer_term_after rctx (e, ty) =
-  _log
+  TypecheckerLog.typing
   @@ pprint_typing_infer (pprint rctx) (layout_typed_term e, layout_rty_opt ty)
 
 let pprint_typing_check_value rctx (e, ty) =
-  _log @@ pprint_typing_check (pprint rctx) (layout_typed_value e, layout_rty ty)
+  TypecheckerLog.typing
+  @@ pprint_typing_check (pprint rctx) (layout_typed_value e, layout_rty ty)
 
 let pprint_typing_infer_value_before rctx e =
-  _log @@ pprint_typing_infer (pprint rctx) (layout_typed_value e, "??")
+  TypecheckerLog.typing
+  @@ pprint_typing_infer (pprint rctx) (layout_typed_value e, "??")
 
 let pprint_typing_infer_value_after rctx (e, res) =
-  _log
+  TypecheckerLog.typing
   @@ pprint_typing_infer (pprint rctx)
        ( layout_typed_value e,
          match res with Some res -> layout_rty res.ty | None -> "None" )
 
 let pprint_typing_subtyping rctx (rty1, rty2) =
-  _log @@ pprint_subtyping (pprint rctx) (rty1, rty2)
+  TypecheckerLog.typing @@ pprint_subtyping (pprint rctx) (rty1, rty2)
 
 let pprint_typing_infer_match_case rctx constr (e, rty) =
-  (_log @@ fun _ -> Pp.printf "@{<bold>Infer from match case %s:@}\n" constr.x);
-  _log @@ pprint_typing_infer (pprint rctx) (layout_typed_term e, layout_rty rty)
+  ( TypecheckerLog.typing @@ fun _ ->
+    Pp.printf "@{<bold>Infer from match case %s:@}\n" constr.x );
+  TypecheckerLog.typing
+  @@ pprint_typing_infer (pprint rctx) (layout_typed_term e, layout_rty rty)
 
 let rec lookup_ctxs ctxs id =
   match ctxs with

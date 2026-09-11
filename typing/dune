@@ -2,7 +2,13 @@
  (public_name CoverageType.typing)
  (name typing)
  (wrapped true)
- (libraries core zutils language auxtyping statistic)
+ (libraries
+  core
+  zutils
+  language
+  auxtyping
+  statistic
+  CoverageType.typechecker_config)
  (modules common handlePred bidirect itemcheck typing)
  (preprocess
   (pps

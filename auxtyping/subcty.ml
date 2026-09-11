@@ -1,10 +1,8 @@
 open Language
 open Zutils
 open Prop
-open Myconfig
 open Zdatatype
 
-let _log_auxtyping = _log "auxtyping"
 let layout_qt = function Nt.Fa -> "∀" | Nt.Ex -> "∃"
 
 let layout_qv { x = qt, x; ty } =
@@ -37,7 +35,7 @@ let report_unclosed loc query =
 
 let check_valid (task, query) =
   let () =
-    _log_debug @@ fun _ ->
+    ZUtilsLog.debug @@ fun _ ->
     Printf.printf "check valid: %s\n" (layout_prop_ query)
   in
   let () = report_unclosed [%here] query in
@@ -69,12 +67,12 @@ let simplify_sub_typectx ctx (rty1, rty2) =
 let sub_cty ou rctx cty1 cty2 =
   let ctx_list, cty1, cty2 = simplify_sub_typectx rctx.rty_ctx (cty1, cty2) in
   let () =
-    _log_auxtyping @@ fun _ ->
+    TypecheckerLog.auxtyping @@ fun _ ->
     Printf.printf "ctx_list: %s\n" (List.split_by_comma _get_x ctx_list)
   in
   let overctx, underctx = build_wf_ctx ctx_list in
   let () =
-    _log_auxtyping @@ fun _ ->
+    TypecheckerLog.auxtyping @@ fun _ ->
     let overctx =
       List.map (fun (x, cty) -> x#:(RtyBase { ou = Over; cty })) overctx
     in
@@ -128,17 +126,17 @@ let sub_cty ou rctx cty1 cty2 =
   let time, res =
     clock (fun () ->
         let () =
-          _log_auxtyping @@ fun _ ->
+          TypecheckerLog.auxtyping @@ fun _ ->
           Printf.printf "before simp:\n%s\n\n" (layout_prop query)
         in
         let query = SimplProp.simpl_query query in
         let () = Statistic.stat_query_formula (rctx.task_name, query) in
         let () =
-          _log_auxtyping @@ fun _ ->
+          TypecheckerLog.auxtyping @@ fun _ ->
           Printf.printf "check valid:\n%s\n\n" (layout_prop query)
         in
         let () =
-          _log_auxtyping @@ fun _ ->
+          TypecheckerLog.auxtyping @@ fun _ ->
           Printf.printf "let[@axiom] tmp = %s\n" (layout_prop__raw query)
         in
         check_valid (Some rctx.task_name, query))
@@ -158,7 +156,7 @@ let non_emptiness_cty rctx cty =
     let overctx, underctx = build_wf_ctx (Typectx.ctx_to_list rctx.rty_ctx) in
     let underctx = underctx @ [ (default_v, mk_top_cty cty.nty) ] in
     let () =
-      _log_auxtyping @@ fun _ ->
+      TypecheckerLog.auxtyping @@ fun _ ->
       let overctx =
         List.map (fun (x, cty) -> x#:(RtyBase { ou = Over; cty })) overctx
       in
@@ -182,11 +180,11 @@ let non_emptiness_cty rctx cty =
     let time, res =
       clock (fun () ->
           let () =
-            _log_auxtyping @@ fun _ ->
+            TypecheckerLog.auxtyping @@ fun _ ->
             Printf.printf "check sat: %s\n" (layout_prop_ query)
           in
           let () =
-            _log_auxtyping @@ fun _ ->
+            TypecheckerLog.auxtyping @@ fun _ ->
             Printf.printf "let[@axiom] tmp = %s\n" (layout_prop__raw query)
           in
           Prover.check_sat (Some rctx.task_name, query))

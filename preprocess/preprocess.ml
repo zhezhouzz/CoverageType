@@ -3,27 +3,23 @@ include Normalization
 open Language
 open Zutils
 
-let _log = Myconfig._log "preprocess"
-
 let parse file =
   ocaml_structure_to_items
   @@ OcamlParser.Oparse.parse_imp_from_file ~sourcefile:file
 
 let multi_parse files = List.concat_map parse files
 let _ctxs = ref None
-let _log = Myconfig._log_preprocess
 
-let predefined_files =
-  [ "basic_typing.ml"; "refinement_typing.ml"; "axioms.ml" ]
+let resolve_files (prim_path : TypecheckerConfig.prim_path) : string list =
+  Option.to_list prim_path.data_type_decls
+  @ [ prim_path.normal_typing; prim_path.coverage_typing; prim_path.axioms ]
 
 let load_ctxs () =
   match !_ctxs with
   | Some ctxs -> ctxs
   | None ->
-      let prim_path = Myconfig.get_prim_path () in
-      let files =
-        List.map (spf "%s/%s" prim_path.predefined_path) predefined_files
-      in
+      let prim_path = (TypecheckerConfig.get ()).prim_path in
+      let files = resolve_files prim_path in
       let items = multi_parse files in
       let alias = Type_alias.item_mk_type_alias_ctx items in
       let items = Type_alias.item_inline alias items in
@@ -59,7 +55,8 @@ let preprocess source_files =
   let code = Type_alias.item_inline alias code in
   let code = Type_alias.item_inline (load_alias ()) code in
   let () =
-    _log (fun _ -> Pp.printf "@{<bold>result:@}\n%s\n" (layout_structure code))
+    TypecheckerLog.preprocess (fun _ ->
+        Pp.printf "@{<bold>result:@}\n%s\n" (layout_structure code))
   in
   (* let () = *)
   (*   Pp.printf "@{<bold>alias:@}\n%s\n" (Type_alias.layout_alias (load_alias ())) *)

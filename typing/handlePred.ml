@@ -15,8 +15,6 @@ open Zdatatype
 
 type solution = { args : (Nt.t, string) typed list; body : Nt.t prop }
 
-let _log = Myconfig._log "instantiateRty"
-
 let layout_solution (p, sol) =
   spf "%s(%s) := %s" p
     (List.split_by_comma _get_x sol.args)
@@ -26,7 +24,7 @@ let layaout_solutions m =
   List.split_by ";; " layout_solution @@ StrMap.to_kv_list m
 
 let instantiate_lit (p, sol) lit =
-  _log (fun () ->
+  TypecheckerLog.instantiate_rty (fun () ->
       Printf.printf "instantiate_lit %s in %s\n" p (layout_lit lit.x));
   match lit.x with
   | AAppOp (op, args) when String.equal p op.x ->
@@ -164,7 +162,7 @@ let unification_rtys poly_preds cs =
 
 let instantiate_poly_pred_rty_aux pds frty xrty =
   let () =
-    _log (fun () ->
+    TypecheckerLog.instantiate_rty (fun () ->
         Printf.printf "instantiate %s\nwith %s\n"
           (layout_rty (construct_poly_pred_rty (pds, frty)))
           (layout_rty xrty))
@@ -176,7 +174,8 @@ let instantiate_poly_pred_rty_aux pds frty xrty =
   in
   let* pds, m = unification_rtys pds [ (xrty, argrty) ] in
   let () =
-    _log (fun () -> Printf.printf "solution:\n%s\n" (layaout_solutions m))
+    TypecheckerLog.instantiate_rty (fun () ->
+        Printf.printf "solution:\n%s\n" (layaout_solutions m))
   in
   let argrty = minstantiate_rty m argrty in
   (* let retty = *)
@@ -188,7 +187,7 @@ let instantiate_poly_pred_rty_aux pds frty xrty =
   let rty = RtyArr { argrty; arg; retty } in
   let xrty = minstantiate_rty m xrty in
   let () =
-    _log (fun () ->
+    TypecheckerLog.instantiate_rty (fun () ->
         Printf.printf "instantiated rty: %s\n" (layout_rty rty);
 
         Printf.printf "instantiated xrty: %s\n" (layout_rty xrty);
